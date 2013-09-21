@@ -1,0 +1,3 @@
+gpuPolyFoam.C
+
+EXE = $(FOAM_APPBIN)/gpuPolyFoam
