@@ -42,54 +42,36 @@ int main(int argc, char *argv[])
 
 	poly_solver_t* poly = new poly_solver_t();
 
-    	poly->redUnits = new reducedUnits(runTime, mesh);
+    poly->redUnits = new reducedUnits(runTime, mesh);
 
 	poly->pot = new potential(mesh,*poly->redUnits);
 
 	poly->molecules = new polyMoleculeCloud(runTime,mesh,*poly->pot,*poly->redUnits);
+    
 	poly->evolveTimer = new clockTimer(runTime,"evolve",true);
 
+    
     Info << "\nStarting time loop\n" << endl;
 
 	while (runTime.loop()){
-        	Info << "Time = " << runTime.timeName() << endl;
-		poly->evolveTimer->startClock();
-		poly->molecules->evolve();
-        	runTime.write();
-
-        	Info << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
-            << "  ClockTime = " << runTime.elapsedClockTime() << " s"
-            << nl << endl;
-	}
-    Info << "End\n" << endl;
-/*
-    potential pot(mesh, redUnits);
-
-    polyMoleculeCloud molecules(runTime, mesh, pot, redUnits);
-
-    Info << "\nStarting time loop\n" << endl;
-
-    clockTimer evolveTimer(runTime, "evolve", true);
-
-    while (runTime.loop())
-    {
+        
         Info << "Time = " << runTime.timeName() << endl;
-
-        evolveTimer.startClock();
-
-        molecules.evolve();
-
-        evolveTimer.stopClock();
-
+		
+        poly->evolveTimer->startClock();
+		
+        poly->molecules->evolve();
+        
         runTime.write();
 
         Info << "ExecutionTime = " << runTime.elapsedCpuTime() << " s"
-            << "  ClockTime = " << runTime.elapsedClockTime() << " s"
-            << nl << endl;
-    }
-
+        << "  ClockTime = " << runTime.elapsedClockTime() << " s"
+        << nl << endl;
+        
+	}
+    
     Info << "End\n" << endl;
-*/
-delete poly;
+    
+    delete poly;
+    
     return 0;
 }
