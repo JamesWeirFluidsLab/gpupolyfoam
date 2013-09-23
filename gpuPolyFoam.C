@@ -40,15 +40,17 @@ int main(int argc, char *argv[])
 #   include "createMesh.H"
 
 
-	poly_solver_t* poly = new poly_solver_t();
+	poly_solver_t* solver = new poly_solver_t();
 
-    poly->redUnits = new reducedUnits(runTime, mesh);
+        solver->redUnits = new reducedUnits(runTime, mesh);
 
-	poly->pot = new potential(mesh,*poly->redUnits);
+	solver->pot = new potential(mesh,*solver->redUnits);
 
-	poly->molecules = new polyMoleculeCloud(runTime,mesh,*poly->pot,*poly->redUnits);
+	solver->molecules = new MOLECULE(runTime,mesh,*solver->pot,*solver->redUnits);
+	
+	solver->sid = new selectIdPairs(mesh, *solver->pot);
     
-	poly->evolveTimer = new clockTimer(runTime,"evolve",true);
+	solver->evolveTimer = new clockTimer(runTime,"evolve",true);
 
     
     Info << "\nStarting time loop\n" << endl;
@@ -57,9 +59,9 @@ int main(int argc, char *argv[])
         
         Info << "Time = " << runTime.timeName() << endl;
 		
-        poly->evolveTimer->startClock();
+        solver->evolveTimer->startClock();
 		
-        poly->molecules->evolve();
+        solver->molecules->evolve();
         
         runTime.write();
 
@@ -71,7 +73,7 @@ int main(int argc, char *argv[])
     
     Info << "End\n" << endl;
     
-    delete poly;
+    delete solver;
     
     return 0;
 }

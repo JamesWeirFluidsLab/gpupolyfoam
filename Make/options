@@ -1,15 +1,39 @@
+ifdef USE_OMM
+ ifeq ($(USE_OMM),POLY)
+  c++FLAGS+=-DUSE_OMM
+  c++FLAGS+=-DPOLY
+ else ifeq ($(USE_OMM),MONO)
+  c++FLAGS+=-DUSE_OMM
+  c++FLAGS+=-DMONO
+ else ifeq ($(USE_OMM),WATER)
+  c++FLAGS+=-DUSE_OMM
+  c++FLAGS+=-DWATER
+ endif
+endif
+
+
 EXE_INC = \
      -I$(LIB_SRC)/finiteVolume/lnInclude \
     -I$(LIB_SRC)/meshTools/lnInclude \
     -I$(LIB_SRC)/lagrangian/basic/lnInclude \
     -I$(LIB_SRC)/lagrangian/molecularDynamics/polyField/lnInclude \
+    -I$(LIB_SRC)/lagrangian/molecularDynamics/waterField/lnInclude \
+    -I$(LIB_SRC)/lagrangian/molecularDynamics/molecularField/lnInclude \
+    -I$(LIB_SRC)/lagrangian/molecularDynamics/atomisticField/lnInclude \
     -I$(LIB_SRC)/lagrangian/molecularDynamics/potential/lnInclude \
-    -I$(LIB_SRC)/lagrangian/molecularDynamics/general/lnInclude
-
+    -I$(LIB_SRC)/lagrangian/molecularDynamics/general/lnInclude \
+    -I$(FOAM_OMM)/include \ 
+    -I$(FOAM_OMM)/include/openmm \
+    -I$(FOAM_OMM)/include/openmm/internal 
 EXE_LIBS = \
     -lfiniteVolume \
     -lmeshTools \
     -llagrangian \
     -lpolyField \
     -lpotential \
-    -lgeneralMolecule
+    -lgeneralMolecule \
+    -latomisticField \
+    -lwaterField \
+    -lmolecularField \
+    -L$(FOAM_OMM)/lib \
+    -lOpenMM_d 
