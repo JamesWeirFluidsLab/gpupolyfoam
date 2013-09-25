@@ -13,32 +13,32 @@
 
 #include "fvCFD.H"
 #include "clockTimer.H"
-#include "mdAtomistic.H"
 #include "selectIdPairs.H"
 #ifdef USE_OMM
 #include "OpenMM.h"
 using namespace OpenMM;
 #endif
 
-#ifdef WATER
-#include "mdWater.H"
-#include "molecularField.H"
-#elif defined POLY
+//#ifdef WATER
+//#include "mdWater.H"
+//#include "molecularField.H"
+#ifdef MONO
+#include "mdAtomistic.H"
+#else
 #include "mdPoly.H"
 #endif
 
 //CONSTANT VARIABLES 
 #define FEM2SEC 1e-15
+#define NANSEC 1e-9
 
 using namespace std;
 
 
 //- use typedef to declare clouds in common term 
-#ifdef WATER
-	typedef molecularField MOLECULE;
-#elif defined MONO
+#ifdef MONO
 	typedef atomisticMoleculeCloud MOLECULE;
-#elif defined POLY
+#else
 	typedef polyMoleculeCloud MOLECULE;
 #endif
 /**
@@ -50,11 +50,10 @@ struct poly_solver_t
 {
 	reducedUnits* redUnits;
 	potential* pot;
-#ifdef WATER
-	molecularField* molecules; //if water molecule
-#elif defined MONO
+
+#ifdef defined MONO
 	atomisticMoleculeCloud* molecules; //if atomistic molecule
-#elif defined POLY
+#else
 	polyMoleculeCloud* molecules;//if polyatomic molecule
 #endif
 	clockTimer* evolveTimer;
@@ -65,7 +64,7 @@ struct poly_solver_t
 	Context* context;
 	Integrator* integrator;
 	Vec3 bBoxOMMinNm;
-	double refTime, refMass, refLength, refForce, deltaT;
+	double refTime, refMass, refLength, refForce, refCharge, deltaT;
 #endif
 	poly_solver_t() : 
 	redUnits(0), pot(0), molecules(0),

@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
 
 	poly_solver_t* solver = new poly_solver_t();
 
-        solver->redUnits = new reducedUnits(runTime, mesh);
+    solver->redUnits = new reducedUnits(runTime, mesh);
 
 	solver->pot = new potential(mesh,*solver->redUnits);
 
@@ -51,6 +51,30 @@ int main(int argc, char *argv[])
 	solver->sid = new selectIdPairs(mesh, *solver->pot);
     
 	solver->evolveTimer = new clockTimer(runTime,"evolve",true);
+    
+    double dt = mesh.time().deltaT().value();
+    const boundBox bBoxOpenFOAM = mesh.bounds();
+
+    
+    // Bounding box in OpenMM in nanometres [nm]:
+    Vec3  bBoxOpenMmInNm = Vec3(Lx, Ly, Lz);
+    //obtain reference properties
+#ifdef USE_OMM
+    solver->refLenght = solver->redUnits.refLenght();
+    solver->refMass = solver->redUnits.refMass();
+    solver->refForce = solver->redUnits.refForce();
+    solver->refCharge = solver->redUnits.refCharge();
+    solver->refTime = solver->redUnits.refTime();
+    // Convert to femtoseconds [fs] for OpenMM:
+    solver->deltaT = = deltaT*redUnits.refTime()/FEM2SEC;
+    // Convert individual bounding-box length-scales to nanometres [nm]:
+    double Lx = bBoxOpenFOAM.span().x()*solver->refLength/NANSEC;
+    double Ly = bBoxOpenFOAM.span().y()*solver->refLength/NANSEC;
+    double Lz = bBoxOpenFOAM.span().z()*solver->refLength/NANSEC;
+    //create boxsize for OMM
+    solver->bBoxOMMinNm = Vec3(Lx,Ly,Lz);
+
+#endif
 
     
     Info << "\nStarting time loop\n" << endl;

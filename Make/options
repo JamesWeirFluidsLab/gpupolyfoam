@@ -5,9 +5,6 @@ ifdef USE_OMM
  else ifeq ($(USE_OMM),MONO)
   c++FLAGS+=-DUSE_OMM
   c++FLAGS+=-DMONO
- else ifeq ($(USE_OMM),WATER)
-  c++FLAGS+=-DUSE_OMM
-  c++FLAGS+=-DWATER
  endif
 endif
 
