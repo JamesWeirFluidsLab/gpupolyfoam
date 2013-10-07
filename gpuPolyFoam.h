@@ -6,6 +6,8 @@
  * Application: gpuPolyFoam
  * Description:
  */
+#ifndef GPUPOLYFOAM_H
+#define	GPUPOLYFOAM_H
 
 #include <stdio.h>
 #include <iostream>
@@ -51,13 +53,12 @@ struct poly_solver_t
 	reducedUnits* redUnits;
 	potential* pot;
 
-#ifdef defined MONO
+#ifdef MONO
 	atomisticMoleculeCloud* molecules; //if atomistic molecule
 #else
 	polyMoleculeCloud* molecules;//if polyatomic molecule
 #endif
 	clockTimer* evolveTimer;
-	selectIdPairs* sid;
 //declare OMM data structure
 #ifdef USE_OMM
 	System* system;
@@ -65,6 +66,7 @@ struct poly_solver_t
 	Integrator* integrator;
 	Vec3 bBoxOMMinNm;
 	double refTime, refMass, refLength, refForce, refCharge, deltaT;
+        selectIdPairs* sid; //open foam
 #endif
 	poly_solver_t() : 
 	redUnits(0), pot(0), molecules(0),
@@ -77,16 +79,10 @@ struct poly_solver_t
 		delete redUnits; delete pot; 
 		delete molecules; delete evolveTimer;
 #ifdef USE_OMM
+		printf("Solver deleted \n");
 		delete context; delete integrator; delete system;
 #endif
 	}
 };
 
-extern std::vector<Vec3>& ommpositions, ommforces, ofpositions;
-//declare utilities functions to be used 
-/**
- * extract OF positions and generate and OMM equivalent 
- * array to be passed to OMM system
- */
-int extractOFPostoOMM(std::vector<Vec3>& posinnm,struct poly_solver_t* sol);
-
+#endif

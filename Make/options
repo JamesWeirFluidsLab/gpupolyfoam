@@ -6,6 +6,9 @@ ifdef USE_OMM
   c++FLAGS+=-DUSE_OMM
   c++FLAGS+=-DMONO
  endif
+else
+ c++FLAGS+=-DUSE_CPU
+ c++FLAGS+=-DPOLY
 endif
 
 

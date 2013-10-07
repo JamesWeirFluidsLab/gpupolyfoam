@@ -31,6 +31,10 @@ Description
 \*---------------------------------------------------------------------------*/
 
 #include "gpuPolyFoam.h"
+#ifdef USE_OMM
+#include "gpuUtilities.h"
+#include "gpuUtilities.C"
+#endif
 
 int main(int argc, char *argv[])
 {
@@ -40,52 +44,41 @@ int main(int argc, char *argv[])
 #   include "createMesh.H"
 
 
-	poly_solver_t* solver = new poly_solver_t();
+        poly_solver_t* solver = new poly_solver_t();
 
-    solver->redUnits = new reducedUnits(runTime, mesh);
+        solver->redUnits = new reducedUnits(runTime, mesh);
 
 	solver->pot = new potential(mesh,*solver->redUnits);
 
 	solver->molecules = new MOLECULE(runTime,mesh,*solver->pot,*solver->redUnits);
-	
-	solver->sid = new selectIdPairs(mesh, *solver->pot);
+
+//	solver->sid = new selectIdPairs(mesh, *solver->pot);
     
-	solver->evolveTimer = new clockTimer(runTime,"evolve",true);
-    
-    double dt = mesh.time().deltaT().value();
-    const boundBox bBoxOpenFOAM = mesh.bounds();
+        double dt = mesh.time().deltaT().value();
+        const boundBox bBoxOF = mesh.bounds();
 
     
-    // Bounding box in OpenMM in nanometres [nm]:
-    Vec3  bBoxOpenMmInNm = Vec3(Lx, Ly, Lz);
     //obtain reference properties
 #ifdef USE_OMM
-    solver->refLenght = solver->redUnits.refLenght();
-    solver->refMass = solver->redUnits.refMass();
-    solver->refForce = solver->redUnits.refForce();
-    solver->refCharge = solver->redUnits.refCharge();
-    solver->refTime = solver->redUnits.refTime();
-    // Convert to femtoseconds [fs] for OpenMM:
-    solver->deltaT = = deltaT*redUnits.refTime()/FEM2SEC;
-    // Convert individual bounding-box length-scales to nanometres [nm]:
-    double Lx = bBoxOpenFOAM.span().x()*solver->refLength/NANSEC;
-    double Ly = bBoxOpenFOAM.span().y()*solver->refLength/NANSEC;
-    double Lz = bBoxOpenFOAM.span().z()*solver->refLength/NANSEC;
-    //create boxsize for OMM
-    solver->bBoxOMMinNm = Vec3(Lx,Ly,Lz);
-
+        setOMMBox(solver,bBoxOF,dt);
+	//extract OF positions to OMM
+	std::vector<Vec3> ommpos;
+	extractOFPostoOMM(ommpos,solver);
 #endif
 
     
     Info << "\nStarting time loop\n" << endl;
-
-	while (runTime.loop()){
+	solver->evolveTimer = new clockTimer(runTime,"evolve",true);
+      while (runTime.loop()){
         
         Info << "Time = " << runTime.timeName() << endl;
 		
         solver->evolveTimer->startClock();
-		
+#ifdef USE_OMM
+        printf("OMM");
+#else
         solver->molecules->evolve();
+#endif
         
         runTime.write();
 
@@ -94,7 +87,7 @@ int main(int argc, char *argv[])
         << nl << endl;
         
 	}
-    
+  
     Info << "End\n" << endl;
     
     delete solver;
