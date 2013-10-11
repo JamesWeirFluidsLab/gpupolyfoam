@@ -53,6 +53,15 @@ using namespace std;
  * so that it becomes easier to transfer
  */
 
+#ifdef USE_OMM
+//the variable 'posInNm' is used to create an dynamic array of
+// positions for openmm
+extern std::vector<Vec3> posInNm;
+// varitalbe 'forceInNm' is used to hold the newly calculated forces
+// by omm
+extern std::vector<Vec3> atomForces;
+#endif
+
 struct poly_solver_t
 {
 	reducedUnits* redUnits;
@@ -71,7 +80,7 @@ struct poly_solver_t
 	Integrator* integrator;
 	Vec3 bBoxOMMinNm;
 	double refTime, refMass, refLength, refForce, refCharge, deltaT,rCutInNM;
-        polyIdPairs* plid; //open foam
+    polyIdPairs* plid; //open foam
 #endif
 	poly_solver_t() : 
 	redUnits(0), pot(0), molecules(0),

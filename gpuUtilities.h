@@ -44,7 +44,9 @@ void extractOFParticles(struct poly_solver_t* solver,
  * array to be passed to OMM system
  */
 
-int extractOFPostoOMM(std::vector<Vec3>& posinnm,struct poly_solver_t* sol);
+int extractOFPostoOMM(std::vector<Vec3>& posinnm,
+                      const struct poly_solver_t* sol,
+                      const boundBox& bb);
 /**
  * setOMMBox
  * extract information from OF to generate relevant data structures

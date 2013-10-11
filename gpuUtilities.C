@@ -27,47 +27,59 @@ int initialiseOMM(struct poly_solver_t* solver)
 	extractLennardJonesParameters(tempmol,*solver->plid,epsstring,sigmastring);	
 	std::cout<<"Eps string = "<<epsstring<<"\n"<<"Sigma string = "<<sigmastring<<"\n";
 	
-        CustomNonbondedForce* nonbonded;
+    CustomNonbondedForce* nonbonded;
+    
+    if(scallingfunction == "noScaling"){
+        nonbonded = new CustomNonbondedForce(
+        "4*eps*((sigma/r)^12-(sigma/r)^6)+(138.9354561469*q/r); "
+        "eps= "+epsstring+"; sigma=" + sigmastring +"; q=q1*q2"
+        );
+    }
+    else if(scallingfunction == "shifted"){
+        nonbonded = new CustomNonbondedForce(
+                "4*eps*((sigma/r)^12-(sigma/r)^6)+(138.9354561469*q)*(1/r-1/rCut); "
+                "eps= "+epsstring+"; sigma=" + sigmastring +"; q=q1*q2"
+                );
+        nonbonded->addGlobalParameter("rCut",solver->rCutInNM);
+    }
+    else if(scallingfunction == "shiftedForce"){
+        // ================================================
+        // Coulomb potential with shifted force correction:
+        // ================================================
+        nonbonded = new CustomNonbondedForce(
+                "4*eps*((sigma/r)^12-(sigma/r)^6)+(138.9354561469*q)*(1/r-1/rCut+(r-rCut)/rCut^2); "
+                "eps= "+epsstring+"; sigma=" + sigmastring +"; q=q1*q2"
+                );
+        nonbonded->addGlobalParameter("rCut",solver->rCutInNM);
+    }
+    else{
+        Info << "Error: (Solver) Cannot find electrostatic potential" <<
+                "specification in potentialDict" << nl;
+        exit(-1);
+    }
+    
+    //add per particles to nonbonded force
+    addParticlesToNonBonded(nonbonded,solver);
+    //set OMM box size
+    solver->system->setDefaultPeriodicBoxVectors(
+        Vec3(solver->bBoxOMMinNm[0],0,0),
+        Vec3(0,solver->bBoxOMMinNm[0],0),
+        Vec3(0,0,solver->bBoxOMMinNm[0])
+        );
         
-        if(scallingfunction == "noScaling"){
-            nonbonded = new CustomNonbondedForce(
-            "4*eps*((sigma/r)^12-(sigma/r)^6)+(138.9354561469*q/r); "
-            "eps= "+epsstring+"; sigma=" + sigmastring +"; q=q1*q2"
-            );
-        }
-        else if(scallingfunction == "shifted"){
-            nonbonded = new CustomNonbondedForce(
-                    "4*eps*((sigma/r)^12-(sigma/r)^6)+(138.9354561469*q)*(1/r-1/rCut); "
-                    "eps= "+epsstring+"; sigma=" + sigmastring +"; q=q1*q2"
-                    );
-            nonbonded->addGlobalParameter("rCut",solver->rCutInNM);
-        }
-        else if(scallingfunction == "shiftedForce"){
-            // ================================================
-            // Coulomb potential with shifted force correction:
-            // ================================================
-            nonbonded = new CustomNonbondedForce(
-                    "4*eps*((sigma/r)^12-(sigma/r)^6)+(138.9354561469*q)*(1/r-1/rCut+(r-rCut)/rCut^2); "
-                    "eps= "+epsstring+"; sigma=" + sigmastring +"; q=q1*q2"
-                    );
-            nonbonded->addGlobalParameter("rCut",solver->rCutInNM);
-        }
-        else{
-            Info << "Error: (Solver) Cannot find electrostatic potential" <<
-                    "specification in potentialDict" << nl;
-            exit(-1);
-        }
-        
-        //add per particles to nonbonded force
-        addParticlesToNonBonded(nonbonded,solver);
-        //set OMM box size
-        solver->system->setDefaultPeriodicBoxVectors(
-			Vec3(solver->bBoxOMMinNm[0],0,0),
-			Vec3(0,solver->bBoxOMMinNm[0],0),
-			Vec3(0,0,solver->bBoxOMMinNm[0])
-			);
-        
-	extractOFParticles(solver,nonbonded);	
+	extractOFParticles(solver,nonbonded);
+	solver->system->addForce(nonbonded);
+    Platform& platform = Platform::getPlatformByName("OpenCL");
+    solver->integrator =  new VerletIntegrator(solver->deltaT*OpenMM::PsPerFs);
+    solver->context = new Context(*omm->system,*omm->integrator,platform);
+    
+    Info << "Initialised sytem on OMM with " <<
+        solver->system.getNumParticles() <<
+        " particles " << nl;
+    Info << "Using OMM "<<
+        omm->context->getPlatform().getName().c_str() <<
+    << " platform " << nl;
+    
 	return status;
 }
 
@@ -167,19 +179,30 @@ void extractOFParticles(struct poly_solver_t* solver,
 }
 
 
-int extractOFPostoOMM(std::vector<Vec3>& posinnm,struct poly_solver_t* sol)
+int extractOFPostoOMM(std::vector<Vec3>& posinnm,struct poly_solver_t* sol,
+                      const boundBox& bb)
 {
 	posinnm.clear();
-/*	IDLList<polyMolecule>::iterator mol(sol->molecules->begin());
+    int numMols = 0;
+    int numParticles = 0;
+    
+	IDLList<polyMolecule>::iterator mol(sol->molecules->begin());
 	for (mol = molecules->begin(); mol != molecules->end(); ++mol)
-        {
-            numOfAtoms++;
-
-            Foam::vector rI = (mol().position() - globalBBox.min())*sol->refLength/NANSEC;
-
+    {
+        int molsize = mol().sitePositions().size();
+        int m = 0;
+        
+        while (m<molsize) {
+            Foam::vector rI = (mol().sitePositions()[m] - bb.min())*sol->refLength*NANSEC;
             posInNm.push_back(Vec3(rI.x(), rI.y(), rI.z()));
+            m++;
         }
-*/ 
+        numParticles += molsize;
+        numMols++;
+    }
+    
+    return numParticles;
+ 
 }
 
 

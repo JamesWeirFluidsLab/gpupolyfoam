@@ -44,9 +44,9 @@ int main(int argc, char *argv[])
 #   include "createMesh.H"
 
 
-        poly_solver_t* solver = new poly_solver_t();
+    poly_solver_t* solver = new poly_solver_t();
 
-        solver->redUnits = new reducedUnits(runTime, mesh);
+    solver->redUnits = new reducedUnits(runTime, mesh);
 
 	solver->pot = new potential(mesh,*solver->redUnits);
 
@@ -55,14 +55,12 @@ int main(int argc, char *argv[])
     //obtain reference properties
 #ifdef USE_OMM
 	solver->plid = new polyIdPairs(mesh, *solver->pot);
-        double dt = mesh.time().deltaT().value();
-        const boundBox bBoxOF = mesh.bounds();
-        setOMMBox(solver,bBoxOF,dt);
+    double dt = mesh.time().deltaT().value();
+    const boundBox bBoxOF = mesh.bounds();
+    setOMMBox(solver,bBoxOF,dt);
 	int status = initialiseOMM(solver);
+    extractOFPostoOMM(posInNm,solver,bBoxOF);
 	exit(-1);
-	//extract OF positions to OMM
-//	std::vector<Vec3> ommpos;
-//	extractOFPostoOMM(ommpos,solver);
 #endif
 
     
