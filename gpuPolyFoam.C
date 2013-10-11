@@ -52,18 +52,17 @@ int main(int argc, char *argv[])
 
 	solver->molecules = new MOLECULE(runTime,mesh,*solver->pot,*solver->redUnits);
 
-//	solver->sid = new selectIdPairs(mesh, *solver->pot);
-    
-        double dt = mesh.time().deltaT().value();
-        const boundBox bBoxOF = mesh.bounds();
-
-    
     //obtain reference properties
 #ifdef USE_OMM
+	solver->plid = new polyIdPairs(mesh, *solver->pot);
+        double dt = mesh.time().deltaT().value();
+        const boundBox bBoxOF = mesh.bounds();
         setOMMBox(solver,bBoxOF,dt);
+	int status = initialiseOMM(solver);
+	exit(-1);
 	//extract OF positions to OMM
-	std::vector<Vec3> ommpos;
-	extractOFPostoOMM(ommpos,solver);
+//	std::vector<Vec3> ommpos;
+//	extractOFPostoOMM(ommpos,solver);
 #endif
 
     
@@ -93,4 +92,37 @@ int main(int argc, char *argv[])
     delete solver;
     
     return 0;
+}
+
+
+const Foam::word getScallingFunction(const MOLECULE& mol)
+{
+    Foam::word scallingFunction; //explicity namespace declaration 
+    
+    IOdictionary potentialDict
+    (
+            IOobject
+            ("potentialDict",mol.mesh().time().system(),
+                    mol.mesh(),IOobject::MUST_READ,IOobject::NO_WRITE)
+    );
+    
+    const dictionary& pairdict = potentialDict.subDict("pair");
+    
+    try
+    {
+        if(pairdict.found("electrostatic")){
+            const dictionary& pairpotentialdict = pairdict.subDict("electrostatic");
+            Foam::word temp = pairpotentialdict.lookup("energyScalingFunction");
+            scallingFunction = temp;
+        }
+        else{
+            throw 20;
+        }
+    }
+    catch(int msg){
+        Info << "getScallingFunction():: " << msg << nl;
+    }
+    
+    
+    return scallingFunction;
 }

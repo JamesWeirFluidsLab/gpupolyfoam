@@ -11,12 +11,15 @@
 
 #include <stdio.h>
 #include <iostream>
+#include <exception>
 
 
 #include "fvCFD.H"
 #include "clockTimer.H"
-#include "selectIdPairs.H"
+
 #ifdef USE_OMM
+#include "selectIdPairs.H"
+#include "polyIdPairs.H"
 #include "OpenMM.h"
 using namespace OpenMM;
 #endif
@@ -33,6 +36,8 @@ using namespace OpenMM;
 //CONSTANT VARIABLES 
 #define FEM2SEC 1e-15
 #define NANSEC 1e-9
+#define DALTON 1.66053886e-27 //from KONSTANTINOS water code
+#define CHARGE 1.602176487e-19 
 
 using namespace std;
 
@@ -65,8 +70,8 @@ struct poly_solver_t
 	Context* context;
 	Integrator* integrator;
 	Vec3 bBoxOMMinNm;
-	double refTime, refMass, refLength, refForce, refCharge, deltaT;
-        selectIdPairs* sid; //open foam
+	double refTime, refMass, refLength, refForce, refCharge, deltaT,rCutInNM;
+        polyIdPairs* plid; //open foam
 #endif
 	poly_solver_t() : 
 	redUnits(0), pot(0), molecules(0),
@@ -84,5 +89,12 @@ struct poly_solver_t
 #endif
 	}
 };
+
+/**
+ * get the scalling function for the current 
+ * simulation
+ */
+const Foam::word getScallingFunction(const MOLECULE& mol);
+
 
 #endif
