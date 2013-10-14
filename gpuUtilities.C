@@ -162,7 +162,7 @@ void extractOFParticles(struct poly_solver_t* solver,
                         *solver->refMass/DALTON;
                 scalar tempmolcharge = constprop.sites()[itr].siteCharge()
                         *solver->refCharge/CHARGE;
-                int midx = solver->system->addParticle(tempmolmass1);
+                int midx = solver->system->addParticle(tempmolmass);
                 int sid = constprop.sites()[itr].siteId();
                 
                 std::vector<double> params(species+1);
@@ -187,7 +187,7 @@ int extractOFPostoOMM(std::vector<Vec3>& posinnm,struct poly_solver_t* sol,
     int numParticles = 0;
     
 	IDLList<polyMolecule>::iterator mol(sol->molecules->begin());
-	for (mol = molecules->begin(); mol != molecules->end(); ++mol)
+	for (mol = sol->molecules->begin(); mol != sol->molecules->end(); ++mol)
     {
         int molsize = mol().sitePositions().size();
         int m = 0;
@@ -205,6 +205,27 @@ int extractOFPostoOMM(std::vector<Vec3>& posinnm,struct poly_solver_t* sol,
  
 }
 
+int setOFforce(struct poly_solver_t* solver, const std::vector<Vec3>& ommForce)
+{
+	IDLList<polyMolecule>::iterator mol(solver->molecules->begin());
+	int numparticle = 0;
+
+        for (mol = solver->molecules->begin(); mol != solver->molecules->end(); ++mol){
+        	int molsize = mol().siteForces().size();
+        	int m = 0;
+		while(m<molsize){
+			mol().siteForces()[m] = Foam::vector                      
+                        (
+                            atomForces[numparticle][0],
+                            atomForces[numparticle][1],
+                            atomForces[numparticle][2]
+                        )*NM2RUF/solver->refForce;
+			numparticle++;
+			m++;
+		}
+	}
+	return numparticle;
+}
 
 //set OMM box
 void setOMMBox(struct poly_solver_t* solver, const boundBox& bBoxOF,const double dt)

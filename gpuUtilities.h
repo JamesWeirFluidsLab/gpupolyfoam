@@ -61,6 +61,11 @@ void setOMMBox(struct poly_solver_t* solver,const boundBox& bBoxOF,const double 
 void addParticlesToNonBonded(CustomNonbondedForce* const nonbonded,
                                 const struct poly_solver_t* solver);
 
+/**
+ * set obtained and calculate forces from omm to 
+ * openfoam
+ */
 
+int setOFforce(struct poly_solver_t* solver, const std::vector<Vec3>& ommForce);
 #endif	/* GPUUTILITIES_H */
 
