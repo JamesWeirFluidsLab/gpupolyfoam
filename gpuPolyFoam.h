@@ -55,6 +55,11 @@ using namespace std;
  */
 
 #ifdef USE_OMM
+        enum STATES {
+            Forces = 1,
+            Positions = 2,
+            Velocities = 3
+        };
 //the variable 'posInNm' is used to create an dynamic array of
 // positions for openmm
 extern std::vector<Vec3> posInNm;
@@ -81,7 +86,7 @@ struct poly_solver_t
 	Integrator* integrator;
 	Vec3 bBoxOMMinNm;
 	double refTime, refMass, refLength, refForce, refCharge, deltaT,rCutInNM;
-    polyIdPairs* plid; //open foam
+        selectIdPairs* plid; //open foam
 #endif
 	poly_solver_t() : 
 	redUnits(0), pot(0), molecules(0),
@@ -94,7 +99,6 @@ struct poly_solver_t
 		delete redUnits; delete pot; 
 		delete molecules; delete evolveTimer;
 #ifdef USE_OMM
-		printf("Solver deleted \n");
 		delete context; delete integrator; delete system;
 #endif
 	}

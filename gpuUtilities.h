@@ -29,7 +29,7 @@ int initialiseOMM(struct poly_solver_t* solver);
  * which could be used as argument to custom non bonded force function
  */
 void extractLennardJonesParameters(const MOLECULE& mol,
-				const polyIdPairs& plid,
+				const selectIdPairs& plid,
 				std::string& epsString,
 				std::string& sigmaString);
 
@@ -66,6 +66,13 @@ void addParticlesToNonBonded(CustomNonbondedForce* const nonbonded,
  * openfoam
  */
 
-int setOFforce(struct poly_solver_t* solver, const std::vector<Vec3>& ommForce);
+int setOFforce(struct poly_solver_t* solver, const std::vector<Vec3>& ommForces);
+
+/**
+ * getOMMState
+ * get information from openmm
+ */
+void getOMMState(const Context* context,std::vector<Vec3>& statearray);
+//                enum STATES st);
 #endif	/* GPUUTILITIES_H */
 
