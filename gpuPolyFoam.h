@@ -36,6 +36,7 @@ using namespace OpenMM;
 //CONSTANT VARIABLES 
 #define FEM2SEC 1e-15
 #define NANSEC 1e-9
+#define NM2RUF 1.66053886e-12 
 #define DALTON 1.66053886e-27 //from KONSTANTINOS water code
 #define CHARGE 1.602176487e-19 
 

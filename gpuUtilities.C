@@ -168,7 +168,7 @@ void extractOFParticles(struct poly_solver_t* solver,
                 std::vector<double> params(species+1);
                 for(int k=0;k<species+1;k++)
                     params[k]=0;
-                params[sid] = 1;
+                params[0] = 1;
                 // charge:
                 params[species] = (double) tempmolcharge;
                 nonbonded->addParticle(params);
