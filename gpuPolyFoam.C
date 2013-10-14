@@ -55,38 +55,37 @@ int main(int argc, char *argv[])
       
     //obtain reference properties
 #ifdef USE_OMM
-        int num = 0;
-        solver->plid = new selectIdPairs(mesh, *solver->pot);
-        double dt = mesh.time().deltaT().value();
-        const boundBox bBoxOF = mesh.bounds();
-        setOMMBox(solver,bBoxOF,dt);
+    int num = 0;
+    solver->plid = new selectIdPairs(mesh, *solver->pot);
+    double dt = mesh.time().deltaT().value();
+    const boundBox bBoxOF = mesh.bounds();
+    setOMMBox(solver,bBoxOF,dt);
 	int status = initialiseOMM(solver);
-        std::vector<Vec3> posInNm;
-        num = extractOFPostoOMM(posInNm,solver,bBoxOF);
-        Info << "extracted " << num 
-                << " particles from OF" << nl;
+    std::vector<Vec3> posInNm;
+    num = extractOFPostoOMM(posInNm,solver,bBoxOF);
+    Info << "extracted " << num 
+            << " particles from OF" << nl;
 	solver->context->setPositions(posInNm);
-        std::vector<Vec3> atomForces;
-        getOMMState(solver->context,atomForces);
-        num = setOFforce(solver,atomForces);
-        Info << "set " << num 
-                << " forces to OF" << nl;
+    std::vector<Vec3> atomForces;
+    getOMMState(solver->context,atomForces);
+    num = setOFforce(solver,atomForces);
+    Info << "set " << num 
+            << " forces to OF" << nl;
         
-        solver->molecules->updateAcceleration();
-        
-        
-        clockTimer openMMTimer(runTime, "openMMTimer", true);
-        clockTimer openFoamTimer(runTime, "openFoamTimer", true);
-        openFoamTimer.startClock();
+    solver->molecules->updateAcceleration();
+    
+    clockTimer openMMTimer(runTime, "openMMTimer", true);
+    clockTimer openFoamTimer(runTime, "openFoamTimer", true);
+    openFoamTimer.startClock();
 #endif
 
     
     Info << "\nStarting time loop\n" << endl;
 	solver->evolveTimer = new clockTimer(runTime,"evolve",true);
       while (runTime.loop()){
-        
+          
         Info << "Time = " << runTime.timeName() << endl;
-		
+        
         solver->evolveTimer->startClock();
 #ifdef USE_OMM
         solver->molecules->evolveBeforeForces();

@@ -55,17 +55,12 @@ using namespace std;
  */
 
 #ifdef USE_OMM
-        enum STATES {
-            Forces = 1,
-            Positions = 2,
-            Velocities = 3
-        };
-//the variable 'posInNm' is used to create an dynamic array of
-// positions for openmm
-extern std::vector<Vec3> posInNm;
-// varitalbe 'forceInNm' is used to hold the newly calculated forces
-// by omm
-extern std::vector<Vec3> atomForces;
+    enum STATES {
+        Forces = 1,
+        Positions = 2,
+        Velocities = 3
+    };
+
 #endif
 
 struct poly_solver_t

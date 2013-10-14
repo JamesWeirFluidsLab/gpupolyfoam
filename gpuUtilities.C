@@ -5,12 +5,12 @@ int initialiseOMM(struct poly_solver_t* solver)
 {
 	int status = 0;
 	// Load OpenMM platform-specific plugins:
-     	Platform::loadPluginsFromDirectory(Platform::getDefaultPluginsDirectory());
+    Platform::loadPluginsFromDirectory(Platform::getDefaultPluginsDirectory());
 	int numPlatforms = Platform::getNumPlatforms();
 	cout<<numPlatforms<<" OMM platforms found on this system"<<std::endl;
 	for(int i=0;i<numPlatforms;i++)
    	{	
-        	Platform& tempPlatform = OpenMM::Platform::getPlatform(i);
+        Platform& tempPlatform = OpenMM::Platform::getPlatform(i);
 		std::string tempPlatformName = tempPlatform.getName();
 		cout << "Platform " << i << 
 		" is " << tempPlatformName.c_str() << std::endl;
@@ -19,8 +19,8 @@ int initialiseOMM(struct poly_solver_t* solver)
 	solver->system = new System();
 	MOLECULE& tempmol = *solver->molecules;
 
-        //get the scalling function required for this simulation
-        Foam::word scallingfunction = getScallingFunction(tempmol);
+    //get the scalling function required for this simulation
+    Foam::word scallingfunction = getScallingFunction(tempmol);
         
 	//string variables for eps and sigma string
 	std::string epsstring,sigmastring;
@@ -104,14 +104,14 @@ void extractLennardJonesParameters(const MOLECULE& mol,
     	{
       		forAll(p.sigma()[i], j)
       		{
-           		const word& idAStr = idList[i];
+                const word& idAStr = idList[i];
            		const word& idBStr = idList[j];
 
-			scalar epsAB = p.epsilon()[i][j]*6.02214129e23/1e3f;
-			scalar sigmaAB = p.sigma()[i][j]/NANSEC;
+                scalar epsAB = p.epsilon()[i][j]*6.02214129e23/1e3f;
+                scalar sigmaAB = p.sigma()[i][j]/NANSEC;
 
-			std::string epsABStr;
-			std::stringstream outEpsAB;
+                std::string epsABStr;
+                std::stringstream outEpsAB;
            		outEpsAB << epsAB;
            		epsABStr = outEpsAB.str();
 
@@ -186,20 +186,20 @@ int extractOFPostoOMM(std::vector<Vec3>& posInNm,struct poly_solver_t* sol,
     int numMols = 0;
     int numParticles = 0;
     
-        IDLList<polyMolecule>::iterator mol(sol->molecules->begin());
+    IDLList<polyMolecule>::iterator mol(sol->molecules->begin());
 	for (mol = sol->molecules->begin(); mol != sol->molecules->end(); ++mol)
-        {
-                int molsize = mol().sitePositions().size();
-                int m = 0;
-        
-                while (m<molsize) {
-                    Foam::vector rI = (mol().sitePositions()[m] - bb.min())*sol->refLength*NANSEC;
-                    posInNm.push_back(Vec3(rI.x(), rI.y(), rI.z()));
-                        m++;
-                }
+    {
+        int molsize = mol().sitePositions().size();
+        int m = 0;
+
+        while (m<molsize) {
+            Foam::vector rI = (mol().sitePositions()[m] - bb.min())*sol->refLength*NANSEC;
+            posInNm.push_back(Vec3(rI.x(), rI.y(), rI.z()));
+            m++;
+        }
         numParticles += molsize;
         numMols++;
-        }
+    }
     
     return numParticles;
  
@@ -210,9 +210,9 @@ int setOFforce(struct poly_solver_t* solver, const std::vector<Vec3>& ommForces)
 	IDLList<polyMolecule>::iterator mol(solver->molecules->begin());
 	int numparticle = 0;
 
-        for (mol = solver->molecules->begin(); mol != solver->molecules->end(); ++mol){
-        	int molsize = mol().siteForces().size();
-        	int m = 0;
+    for (mol = solver->molecules->begin(); mol != solver->molecules->end(); ++mol){
+        int molsize = mol().siteForces().size();
+        int m = 0;
 		while(m<molsize){
 			mol().siteForces()[m] = Foam::vector                      
                         (
