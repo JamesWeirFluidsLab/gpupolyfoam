@@ -76,6 +76,8 @@ struct poly_solver_t
 	clockTimer* evolveTimer;
 //declare OMM data structure
 #ifdef USE_OMM
+    clockTimer* ommTimer;
+    clockTimer* openFoamTimer;
 	System* system;
 	Context* context;
 	Integrator* integrator;

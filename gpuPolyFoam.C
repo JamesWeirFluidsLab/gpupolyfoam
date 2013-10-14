@@ -51,6 +51,8 @@ int main(int argc, char *argv[])
 	solver->pot = new potential(mesh,*solver->redUnits);
 
 	solver->molecules = new MOLECULE(runTime,mesh,*solver->pot,*solver->redUnits);
+    
+    solver->evolveTimer = new clockTimer(runTime,"evolve",true);
 
       
     //obtain reference properties
@@ -74,33 +76,44 @@ int main(int argc, char *argv[])
         
     solver->molecules->updateAcceleration();
     
-    clockTimer openMMTimer(runTime, "openMMTimer", true);
-    clockTimer openFoamTimer(runTime, "openFoamTimer", true);
-    openFoamTimer.startClock();
+    solver->ommTimer = new clockTimer(runTime, "openMMTimer", true);
+    solver->openFoamTimer = new clockTimer(runTime, "openFoamTimer", true);
+    solver->openFoamTimer->startClock();
 #endif
 
     
     Info << "\nStarting time loop\n" << endl;
-	solver->evolveTimer = new clockTimer(runTime,"evolve",true);
+	
       while (runTime.loop()){
           
         Info << "Time = " << runTime.timeName() << endl;
         
         solver->evolveTimer->startClock();
+          
 #ifdef USE_OMM
         solver->molecules->evolveBeforeForces();
-        openFoamTimer.stopClock();
+          
+        solver->openFoamTimer->stopClock();
+          
         num = extractOFPostoOMM(posInNm,solver,bBoxOF);
-        openMMTimer.startClock();
+          
+        solver->openMMTimer->startClock();
+          
         solver->context->setPositions(posInNm);
         getOMMState(solver->context,atomForces);
-        openMMTimer.stopClock();
+          
+        solver->openMMTimer->stopClock();
+          
         num = setOFforce(solver,atomForces);
+          
+        solver->openFoamTimer->startClock();
+          
         solver->molecules->evolveAfterForces();
+          
 #else
-        solver->evolveTimer->stopClock();
         solver->molecules->evolve();
 #endif
+        solver->evolveTimer->stopClock();
         
         runTime.write();
 
