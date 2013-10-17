@@ -78,12 +78,6 @@ int initialiseOMM(struct poly_solver_t* solver)
     Info << "Cutoff distance "<< nonbonded->getCutoffDistance() << nl;
     Info << "==============================="<<nl;    
 
-    while(kk<nonbonded->getNumPerParticleParameters()){
-        std::string t = nonbonded->getPerParticleParameterName(kk);
-        Info << t << nl;
-        kk++;
-    }
-
     solver->system->addForce(nonbonded);
     Platform& platform = Platform::getPlatformByName("OpenCL");
     solver->integrator =  new VerletIntegrator(solver->deltaT*OpenMM::PsPerFs);
@@ -171,8 +165,10 @@ void extractOFParticles(struct poly_solver_t* solver,
                     mol.constProps(m().id());
             int molsize = constprop.sites().size();
 
+
             //allocate memory for array holding molecule index based on molecule size
             midx = (int*) malloc(sizeof(int)*molsize);
+
             //now traverse throught the N sites of each molecule size obtained
             //from previous retrive
             int itr = 0;
@@ -195,14 +191,14 @@ void extractOFParticles(struct poly_solver_t* solver,
                 
                 itr++;
             }
-        
+            //add exclusion for each molecule obtained
             if(molsize>1)
 			for(int i=0;i<molsize-1;i++)
 				for(int j=i+1;j<molsize;j++)
 					nonbonded->addExclusion(midx[i],midx[j]);
+        	    // clear the mol id list for further assignment
             free(midx);
-	    // add exclusion using the list of mol ids 
-	    // clear the mol id list for further assignment
+
     }//first for loop ends
 }
 
