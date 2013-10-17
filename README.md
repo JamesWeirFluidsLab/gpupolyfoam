@@ -52,6 +52,7 @@ inside you bashrc create a varible `export FOAM_OMM=<path-to-omm-install-dir>`
 
 
 Essentially the *FOAM_OMM* varible is used as a relative path inside the
+
 gpuPolyFoam options file, this is done to keep the installation standard and
 error free therefore please do not change this variable inside the options file
 
@@ -63,12 +64,16 @@ Please execute the following step for installing **GPU PolyFOAM** solver
 
 -   inside the directory execute *wmake USE_OMM=POLY* for polyAtomic class
 
-    or alternatively for motoatomic you must execute
+
+
+or alternatively for motoatomic you must execute
 
     *wmake USE_OMM=MONO*
 
-    *Note: please take care of upper case letters which are vital for appropriate
-    compilation*
+*Note: please take care of upper case letters which are vital for appropriate
+compilation*
+
+
 
 if you do not get any compilation errors then there should be an executable
 generated inside
@@ -81,4 +86,7 @@ simulation.
 
 
                     **Thanks**
-		==================
+
+==================
+
+
