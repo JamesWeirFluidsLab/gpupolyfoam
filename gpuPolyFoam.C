@@ -66,14 +66,15 @@ int main(int argc, char *argv[])
     std::vector<Vec3> posInNm;
     num = extractOFPostoOMM(posInNm,solver,bBoxOF);
     Info << "extracted " << num 
-            << " particles from OF" << nl;
+        << " particles from OF" << nl;
 	solver->context->setPositions(posInNm);
     std::vector<Vec3> atomForces;
     getOMMState(solver->context,atomForces);
     num = setOFforce(solver,atomForces);
     Info << "set " << num 
-            << " forces to OF" << nl;
+        << " forces to OF" << nl;
         
+    
     solver->molecules->updateAcceleration();
     
     solver->ommTimer = new clockTimer(runTime, "openMMTimer", true);
@@ -97,12 +98,11 @@ int main(int argc, char *argv[])
           
         num = extractOFPostoOMM(posInNm,solver,bBoxOF);
           
-        solver->openMMTimer->startClock();
+        solver->ommTimer->startClock();
           
         solver->context->setPositions(posInNm);
         getOMMState(solver->context,atomForces);
-          
-        solver->openMMTimer->stopClock();
+        solver->ommTimer->stopClock();
           
         num = setOFforce(solver,atomForces);
           
