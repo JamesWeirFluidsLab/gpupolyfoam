@@ -74,6 +74,7 @@ int main(int argc, char *argv[])
     Info << "set " << num 
             << " forces to OF" << nl;
         
+    
     solver->molecules->updateAcceleration();
     
     solver->ommTimer = new clockTimer(runTime, "openMMTimer", true);
@@ -97,12 +98,11 @@ int main(int argc, char *argv[])
           
         num = extractOFPostoOMM(posInNm,solver,bBoxOF);
           
-        solver->openMMTimer->startClock();
+        solver->ommTimer->startClock();
           
         solver->context->setPositions(posInNm);
         getOMMState(solver->context,atomForces);
-          
-        solver->openMMTimer->stopClock();
+        solver->ommTimer->stopClock();
           
         num = setOFforce(solver,atomForces);
           

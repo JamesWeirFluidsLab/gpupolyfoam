@@ -68,6 +68,30 @@ int initialiseOMM(struct poly_solver_t* solver)
         );
 
     extractOFParticles(solver,nonbonded);
+    
+    Info << "DEBUG: CUSTOMNONBONDEDFORCE INFO"<<nl;
+    Info << "Num particles "<< nonbonded->getNumParticles() << nl;
+    Info << "Num exclusion "<< nonbonded->getNumExclusions() << nl;
+    Info << "Num perparticle params "<< nonbonded->getNumPerParticleParameters() << nl;
+    Info << "Num global params "<< nonbonded->getNumGlobalParameters() << nl;
+    Info << "Nonbonded method "<< nonbonded->getNonbondedMethod() << nl;
+    Info << "Cutoff distance "<< nonbonded->getCutoffDistance() << nl;
+    Info << "==============================="<<nl;    
+
+    int kk = 0;
+    std::vector<double> tempvec;
+    while(kk<9){
+        nonbonded->getParticleParameters(kk,tempvec);
+        for(int j=0;j<tempvec.size();j++)
+            Info << j << " "<<tempvec[j]<<nl;
+        kk++;
+    }
+    kk=0;
+    while(kk<nonbonded->getNumPerParticleParameters()){
+        std::string t = nonbonded->getPerParticleParameterName(kk);
+        Info << t << nl;
+        kk++;
+    }
     solver->system->addForce(nonbonded);
     Platform& platform = Platform::getPlatformByName("OpenCL");
     solver->integrator =  new VerletIntegrator(solver->deltaT*OpenMM::PsPerFs);
@@ -108,7 +132,7 @@ void extractLennardJonesParameters(const MOLECULE& mol,
            		const word& idBStr = idList[j];
 
                 scalar epsAB = p.epsilon()[i][j]*6.02214129e23/1e3f;
-                scalar sigmaAB = p.sigma()[i][j]/NANSEC;
+                scalar sigmaAB = p.sigma()[i][j]/NANO;
 
                 std::string epsABStr;
                 std::stringstream outEpsAB;
@@ -145,6 +169,8 @@ void extractOFParticles(struct poly_solver_t* solver,
     const int species = solver->plid->sigma().size();
     Info << "Number of Species found " << species << nl;
     
+    int* midx=NULL;
+	 
     MOLECULE& mol = *solver->molecules;
     IDLList<polyMolecule>::iterator m(mol.begin());
     for (m = mol.begin(); m != mol.end(); ++m)
@@ -153,6 +179,8 @@ void extractOFParticles(struct poly_solver_t* solver,
                     mol.constProps(m().id());
             int molsize = constprop.sites().size();
 
+	    //allocate memory for array holding molecule index based on molecule size
+	    midx = (int*) malloc(sizeof(int)*molsize);
             //now traverse throught the N sites of each molecule size obtained
             //from previous retrive
             int itr = 0;
@@ -162,9 +190,9 @@ void extractOFParticles(struct poly_solver_t* solver,
                         *solver->refMass/DALTON;
                 double tempmolcharge = constprop.sites()[itr].siteCharge()
                         *solver->refCharge/CHARGE;
-                int midx = solver->system->addParticle(tempmolmass);
+                midx[itr]  = solver->system->addParticle(tempmolmass);
                 int sid = constprop.sites()[itr].siteId();
-                
+         
                 std::vector<double> params(species+1);
                 for(int k=0;k<species+1;k++)
                     params[k]=0;
@@ -175,6 +203,13 @@ void extractOFParticles(struct poly_solver_t* solver,
                 
                 itr++;
             }
+		if(molsize>1)
+			for(int i=0;i<molsize-1;i++)
+				for(int j=i+1;j<molsize;j++)
+					nonbonded->addExclusion(midx[i],midx[j]);
+		free(midx);
+	    // add exclusion using the list of mol ids 
+	    // clear the mol id list for further assignment
     }//first for loop ends
 }
 
@@ -193,7 +228,7 @@ int extractOFPostoOMM(std::vector<Vec3>& posInNm,struct poly_solver_t* sol,
         int m = 0;
 
         while (m<molsize) {
-            Foam::vector rI = (mol().sitePositions()[m] - bb.min())*sol->refLength*NANSEC;
+            Foam::vector rI = (mol().sitePositions()[m] - bb.min())*sol->refLength*NM;
             posInNm.push_back(Vec3(rI.x(), rI.y(), rI.z()));
             m++;
         }
@@ -239,11 +274,11 @@ void setOMMBox(struct poly_solver_t* solver, const boundBox& bBoxOF,const double
 	solver->deltaT = dt*solver->refTime/FEM2SEC;
 	
 	//convert to reduced omm rcut size
-	solver->rCutInNM = solver->molecules->pot().pairPotentials().rCutMax()*solver->refLength/NANSEC;
+	solver->rCutInNM = solver->molecules->pot().pairPotentials().rCutMax()*solver->refLength/NANO;
 	// Convert individual bounding-box length-scales to nanometres [nm]
-	double Lx = bBoxOF.span().x()*solver->refLength/NANSEC;
-	double Ly = bBoxOF.span().y()*solver->refLength/NANSEC;
-	double Lz = bBoxOF.span().z()*solver->refLength/NANSEC;
+	double Lx = bBoxOF.span().x()*solver->refLength/NANO;
+	double Ly = bBoxOF.span().y()*solver->refLength/NANO;
+	double Lz = bBoxOF.span().z()*solver->refLength/NANO;
 	//create boxsize for OMM 
 	solver->bBoxOMMinNm = Vec3(Lx,Ly,Lz);
 	
@@ -259,7 +294,7 @@ void addParticlesToNonBonded(CustomNonbondedForce* const nonbonded,
         const word& idAstr = idlist[i];
         nonbonded->addPerParticleParameter(idAstr);
     }
-    nonbonded->addPerParticleParameter("q" );
+    nonbonded->addPerParticleParameter("q");
     
     //set nonbondedmethod
     nonbonded->setNonbondedMethod(CustomNonbondedForce::CutoffPeriodic);
@@ -270,6 +305,7 @@ void getOMMState(const Context* context,std::vector<Vec3>& statearray)
 //        enum STATES st)
 {
 	statearray.clear();
-	State state = context->getState(OpenMM::State::Forces,true);
+	State state = context->getState(OpenMM::State::Forces|State::Energy,true);
 	statearray = state.getForces();
+        
 }
