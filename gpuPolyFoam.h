@@ -19,7 +19,6 @@
 
 #ifdef USE_OMM
 #include "selectIdPairs.H"
-#include "polyIdPairs.H"
 #include "OpenMM.h"
 using namespace OpenMM;
 #endif
