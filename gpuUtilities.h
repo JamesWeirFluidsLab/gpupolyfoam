@@ -29,9 +29,8 @@ int initialiseOMM(struct poly_solver_t* solver);
  * which could be used as argument to custom non bonded force function
  */
 void extractLennardJonesParameters(const MOLECULE& mol,
-				const selectIdPairs& plid,
-				std::string& epsString,
-				std::string& sigmaString);
+				const polyIdPairs& plid,
+				std::vector<std::string>& coeffStr);
 
 /**
  * extract OF particles

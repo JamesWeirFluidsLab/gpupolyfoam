@@ -18,7 +18,7 @@
 #include "clockTimer.H"
 
 #ifdef USE_OMM
-#include "selectIdPairs.H"
+#include "polyIdPairs.H"
 #include "OpenMM.h"
 using namespace OpenMM;
 #endif
@@ -83,7 +83,7 @@ struct poly_solver_t
 	Integrator* integrator;
 	Vec3 bBoxOMMinNm;
 	double refTime, refMass, refLength, refForce, refCharge, deltaT,rCutInNM;
-        selectIdPairs* plid; //open foam
+        polyIdPairs* plid; //open foam
 #endif
 	poly_solver_t() : 
 	redUnits(0), pot(0), molecules(0),
@@ -96,6 +96,7 @@ struct poly_solver_t
 		delete redUnits; delete pot; 
 		delete molecules; delete evolveTimer;
 #ifdef USE_OMM
+		std::cout << "Deleting everything ..."<<std::endl;
 		delete context; delete integrator; delete system;
 #endif
 	}

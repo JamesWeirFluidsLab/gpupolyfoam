@@ -21,15 +21,52 @@ int initialiseOMM(struct poly_solver_t* solver)
 
     //get the scalling function required for this simulation
     Foam::word scallingfunction = getScallingFunction(tempmol);
+    Info << "Scalling function " << scallingfunction << nl;
+       
+	//dynamic coeff string array
+	std::vector<std::string> coeffStr;
+	std::string epsstring, sigmastring;
+ 
         
-	//string variables for eps and sigma string
-	std::string epsstring,sigmastring;
-	extractLennardJonesParameters(tempmol,*solver->plid,epsstring,sigmastring);	
-	std::cout<<"Eps string = "<<epsstring<<"\n"<<"Sigma string = "<<sigmastring<<"\n";
+	extractLennardJonesParameters(tempmol,*solver->plid,coeffStr);
+        std::string coefftype = solver->plid->coeffType();
+        Info << "CoeffType " << coefftype << nl;
+        
+        const label cs = solver->plid->coeffSize();
+        const List<label>& coeffids = solver->plid->coeffNumIds();
+        const List<word>& coeffnames = solver->plid->coeffNames();
+        
+        
+        std::stringstream tempstr;;
+        
+        for(int i=0;i<cs;++i){
+            tempstr << coeffnames[i] << "= " << coeffStr[i] << ";";
+        }
+        
+        std::string formulastr;
+        
+        if(coefftype == "lennardJones"){
+            formulastr = 
+            "4*epsilon*((sigma/r)^12-(sigma/r)^6)+(138.9354561469*q)*(1/r-1/rCut+(r-rCut)/rCut^2); " 
+            + tempstr.str() + " q=q1*q2";
+        }
+        else if(coefftype == "morse"){
+            formulastr = "D(exp[-2alpha(r-r0)]-2exp[-alpha(r-r0)]);"
+                    + tempstr.str();
+        }
+        else{
+            Info << "no coeff type found, quitting ..." << nl;
+            exit(-1);
+        }
+                       
+        //form a custom equation string from the obtained
+        //parameters
+        
+	
 	
     CustomNonbondedForce* nonbonded;
     
-    if(scallingfunction == "noScaling"){
+    /*if(scallingfunction == "noScaling"){
         nonbonded = new CustomNonbondedForce(
         "4*eps*((sigma/r)^12-(sigma/r)^6)+(138.9354561469*q/r); "
         "eps= "+epsstring+"; sigma=" + sigmastring +"; q=q1*q2"
@@ -42,14 +79,15 @@ int initialiseOMM(struct poly_solver_t* solver)
                 );
         nonbonded->addGlobalParameter("rCut",solver->rCutInNM);
     }
-    else if(scallingfunction == "shiftedForce"){
+    else*/ if(scallingfunction == "shiftedForce"){
         // ================================================
         // Coulomb potential with shifted force correction:
         // ================================================
-        nonbonded = new CustomNonbondedForce(
-                "4*eps*((sigma/r)^12-(sigma/r)^6)+(138.9354561469*q)*(1/r-1/rCut+(r-rCut)/rCut^2); "
-                "eps= "+epsstring+"; sigma=" + sigmastring +"; q=q1*q2"
-                );
+//        nonbonded = new CustomNonbondedForce(
+//                "4*epsilon*((sigma/r)^12-(sigma/r)^6)+(138.9354561469*q)*(1/r-1/rCut+(r-rCut)/rCut^2); "
+//                "epsilon= "+epsstring+"; sigma=" + sigmastring +"; q=q1*q2"
+//                );
+        nonbonded = new CustomNonbondedForce(formulastr);
         nonbonded->addGlobalParameter("rCut",solver->rCutInNM);
     }
     else{
@@ -95,65 +133,60 @@ int initialiseOMM(struct poly_solver_t* solver)
 
 
 void extractLennardJonesParameters(const MOLECULE& mol,
-			const selectIdPairs& p,
-			std::string& epsString,
-			std::string& sigmaString)
+			const polyIdPairs& p,
+			std::vector<std::string>& coeffStr)
 {
-	epsString = "";
-	sigmaString = "";
 
 	const List<word>& idList = mol.pot().siteIdList();
-	if(idList.size()<=0){
-		FatalErrorIn("ExtractLennardJonesParameters::gpuPolyFoam") << nl
-			<< "potential siteidlist cannot be zero "
-			<< nl << abort(FatalError);
-	}
+	const List<word>& coefflist = p.coeffNames();
+	label coeffsize = coefflist.size();
+	std::vector<std::string> coeffstr(coeffsize);
 
 	int counter = 0;
-	forAll(p.sigma(), i)
-    	{
-      		forAll(p.sigma()[i], j)
-      		{
-                const word& idAStr = idList[i];
-           		const word& idBStr = idList[j];
+	for(label c = 0; c < coeffsize; ++c)
+	{
+		counter = 0;
+		forAll(p.coeffVals()[c],i){
+			forAll(p.coeffVals()[c][i],j){
+				const word& idAStr = idList[i];
+				const word& idBStr = idList[j];
+//TODO: delete later if all is well				
+				scalar coeffAB;
+                                
+				if(coefflist[c] == "sigma")
+                                    coeffAB = p.coeffVals()[c][i][j]/1e-9;
+				else if(coefflist[c] == "epsilon")
+                                    coeffAB = p.coeffVals()[c][i][j]*6.02214129e23/1e3f;
+                                else if(coefflist[c] == "a")
+                                    coeffAB = 0;//TODO: write conversion for a
+                                else if(coefflist[c] == "alpha")
+                                    coeffAB = 0;
+                                else if(coefflist[c] == "r0")
+                                    coeffAB = 0;
+                                
+				std::string ABstr;
+				std::stringstream outAB;		
+				outAB << coeffAB;
+				ABstr = outAB.str();
+				std::string tempstr = ABstr+"*("+idAStr+"1*"+idBStr+"2)";
 
-                scalar epsAB = p.epsilon()[i][j]*6.02214129e23/1e3f;
-                scalar sigmaAB = p.sigma()[i][j]/NANO;
-
-                std::string epsABStr;
-                std::stringstream outEpsAB;
-           		outEpsAB << epsAB;
-           		epsABStr = outEpsAB.str();
-
-           		std::string sigmaABStr;
-           		std::stringstream outSigmaAB;
-           		outSigmaAB << sigmaAB;
-          		sigmaABStr = outSigmaAB.str();
-
-           		std::string epsStr2 = epsABStr+"*("+idAStr+"1*"+idBStr+"2)";
-           		std::string sigmaStr2 = sigmaABStr+"*("+idAStr+"1*"+idBStr+"2)";
-
-           		if(counter == 0)
-           		{
-              			epsString = epsString+""+epsStr2;
-              			sigmaString = sigmaString+""+sigmaStr2;
-           		}
-           		else
-           		{
-             			 epsString = epsString+" + "+epsStr2;
-              			 sigmaString = sigmaString+" + "+sigmaStr2;
-           		}
-           		counter++;
+				if(counter == 0)
+					coeffstr[c] = coeffstr[c]+""+tempstr;
+				else
+					coeffstr[c] = coeffstr[c]+" + "+tempstr;			
+				counter++;
+			}
 		}
-	}	
-		
+	}
+
+	for(counter = 0; counter < coeffsize; ++counter)
+		coeffStr.push_back(coeffstr[counter]);
 }
 
 void extractOFParticles(struct poly_solver_t* solver,
                         CustomNonbondedForce* const nonbonded)
 {
-    const int species = solver->plid->sigma().size();
-    Info << "Number of Species found " << species << nl;
+    const int species = solver->plid->nIds();
     
     int* midx=NULL;
 	 
@@ -279,8 +312,9 @@ void addParticlesToNonBonded(CustomNonbondedForce* const nonbonded,
 {
     const List<word>& idlist = solver->molecules->pot().siteIdList();
     
-    forAll(solver->plid->sigma(),i){
+    for(int i = 0; i < solver->plid->nIds(); ++i){
         const word& idAstr = idlist[i];
+	Info << "List " << i << ": "<< idAstr << nl;
         nonbonded->addPerParticleParameter(idAstr);
     }
     nonbonded->addPerParticleParameter("q");
