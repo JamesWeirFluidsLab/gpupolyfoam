@@ -25,8 +25,6 @@ int initialiseOMM(struct poly_solver_t* solver)
        
 	//dynamic coeff string array
 	std::vector<std::string> coeffStr;
-	std::string epsstring, sigmastring;
- 
         
 	extractLennardJonesParameters(tempmol,*solver->plid,coeffStr);
         std::string coefftype = solver->plid->coeffType();
