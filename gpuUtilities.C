@@ -49,14 +49,17 @@ int initialiseOMM(struct poly_solver_t* solver)
             + tempstr.str() + " q=q1*q2";
         }
         else if(coefftype == "morse"){
-            formulastr = "D(exp[-2alpha(r-r0)]-2exp[-alpha(r-r0)]);"
+            //formulastr = "D*(exp[-2*alpha*(r-r0)]-2*exp[-alpha*(r-r0)]);"
+            formulastr = "D*(exp(-2*alpha*(r-r0))-2*exp(-alpha*(r-r0)));"
                     + tempstr.str();
         }
         else{
             Info << "no coeff type found, quitting ..." << nl;
             exit(-1);
         }
-                       
+        
+        Info << "====Equation====" << nl;
+        Info << formulastr << nl;
         //form a custom equation string from the obtained
         //parameters
         
@@ -155,12 +158,12 @@ void extractLennardJonesParameters(const MOLECULE& mol,
                                     coeffAB = p.coeffVals()[c][i][j]/1e-9;
 				else if(coefflist[c] == "epsilon")
                                     coeffAB = p.coeffVals()[c][i][j]*6.02214129e23/1e3f;
-                                else if(coefflist[c] == "a")
-                                    coeffAB = 0;//TODO: write conversion for a
+                                else if(coefflist[c] == "D")
+                                    coeffAB = p.coeffVals()[c][i][j] * 6.02214129e20;
                                 else if(coefflist[c] == "alpha")
-                                    coeffAB = 0;
+                                    coeffAB = p.coeffVals()[c][i][j] * 1.0f / 1e9;
                                 else if(coefflist[c] == "r0")
-                                    coeffAB = 0;
+                                    coeffAB = p.coeffVals()[c][i][j] * 1e9;
                                 
 				std::string ABstr;
 				std::stringstream outAB;		
@@ -184,7 +187,15 @@ void extractLennardJonesParameters(const MOLECULE& mol,
 void extractOFParticles(struct poly_solver_t* solver,
                         CustomNonbondedForce* const nonbonded)
 {
-    const int species = solver->plid->nIds();
+    const std::string coefftype = solver->plid->coeffType();
+    int temp = 0;
+    
+    if(coefftype == "lennardJones")
+        temp = solver->plid->nIds() + 1;
+    else
+        temp = solver->plid->nIds();
+    
+    const int species = temp;
     
     int* midx=NULL;
 	 
@@ -212,11 +223,12 @@ void extractOFParticles(struct poly_solver_t* solver,
                 midx[itr]  = solver->system->addParticle(tempmolmass);
                 int sid = constprop.sites()[itr].siteId();
          
-                std::vector<double> params(species+1);
-                for(int k=0;k<species+1;k++)
+                std::vector<double> params(species);
+                for(int k=0;k<species;k++)
                     params[k]=0;
                 params[sid] = 1;
-                params[species] = tempmolcharge;
+                if(coefftype == "lennardJones")
+                        params[species-1] = tempmolcharge;
                 
                 nonbonded->addParticle(params);
                 
@@ -309,13 +321,15 @@ void addParticlesToNonBonded(CustomNonbondedForce* const nonbonded,
                                 const struct poly_solver_t* solver)
 {
     const List<word>& idlist = solver->molecules->pot().siteIdList();
+    const std::string coefftype = solver->plid->coeffType();
     
     for(int i = 0; i < solver->plid->nIds(); ++i){
         const word& idAstr = idlist[i];
 	Info << "List " << i << ": "<< idAstr << nl;
         nonbonded->addPerParticleParameter(idAstr);
     }
-    nonbonded->addPerParticleParameter("q");
+    if(coefftype == "lennardJones")
+        nonbonded->addPerParticleParameter("q");
     
     //set nonbondedmethod
     nonbonded->setNonbondedMethod(CustomNonbondedForce::CutoffPeriodic);
