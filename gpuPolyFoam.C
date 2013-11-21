@@ -62,8 +62,7 @@ int main(int argc, char *argv[])
     double dt = mesh.time().deltaT().value();
     const boundBox bBoxOF = mesh.bounds();
     setOMMBox(solver,bBoxOF,dt);
-	int status = initialiseOMM(solver);
-//	exit(-1);
+    initialiseOMM(solver);
     std::vector<Vec3> posInNm;
     num = extractOFPostoOMM(posInNm,solver,bBoxOF);
     Info << "extracted " << num 

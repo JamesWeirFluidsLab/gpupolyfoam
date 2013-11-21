@@ -21,14 +21,14 @@ extern std::vector<Vec3> ommpositions, ommforces, ofpositions;
  * system
  * integrator
  */
-int initialiseOMM(struct poly_solver_t* solver);
+void initialiseOMM(struct poly_solver_t* solver);
 
 /**
  * extract sigma and eps values
  * to create a string of lennardJones parameters
  * which could be used as argument to custom non bonded force function
  */
-void extractLennardJonesParameters(const MOLECULE& mol,
+void extractCoeffParameters(const MOLECULE& mol,
 				const polyIdPairs& plid,
 				std::vector<std::string>& coeffStr);
 
