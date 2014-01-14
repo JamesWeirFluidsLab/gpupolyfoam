@@ -4,7 +4,8 @@
 void initialiseOMM(struct poly_solver_t* solver)
 {
 	// Load OpenMM platform-specific plugins:
-    	Platform::loadPluginsFromDirectory(Platform::getDefaultPluginsDirectory());
+    	
+Platform::loadPluginsFromDirectory(Platform::getDefaultPluginsDirectory());
 	int numPlatforms = Platform::getNumPlatforms();
 	cout<<numPlatforms<<" OMM platforms found on this system"<<std::endl;
 	for(int i=0;i<numPlatforms;i++)
@@ -18,9 +19,9 @@ void initialiseOMM(struct poly_solver_t* solver)
 	solver->system = new System();
 	MOLECULE& tempmol = *solver->molecules;
 
-    //get the scalling function required for this simulation
-    Foam::word scallingfunction = getScallingFunction(tempmol);
-    Info << "Scalling function " << scallingfunction << nl;
+        //get the scalling function required for this simulation
+        Foam::word scallingfunction = getScallingFunction(tempmol);
+        Info << "Scalling function " << scallingfunction << nl;
        
 	//dynamic coeff string array
 	std::vector<std::string> coeffStr;
@@ -49,7 +50,8 @@ void initialiseOMM(struct poly_solver_t* solver)
         
         if(coefftype == "lennardJones"){
             formulastr = 
-            "4*epsilon*((sigma/r)^12-(sigma/r)^6)+(138.9354561469*q)*(1/r-1/rCut+(r-rCut)/rCut^2); " 
+            
+"4*epsilon*((sigma/r)^12-(sigma/r)^6)+(138.9354561469*q)*(1/r-1/rCut+(r-rCut)/rCut^2); " 
             + tempstr.str() + " q=q1*q2";
         }
         else if(coefftype == "morse"){
@@ -99,15 +101,18 @@ void initialiseOMM(struct poly_solver_t* solver)
     Info << "CUSTOMNONBONDEDFORCE INFO"<<nl;
     Info << "Num particles "<< nonbonded->getNumParticles() << nl;
     Info << "Num exclusion "<< nonbonded->getNumExclusions() << nl;
-    Info << "Num perparticle params "<< nonbonded->getNumPerParticleParameters() << nl;
+    Info << "Num perparticle params "<< nonbonded->getNumPerParticleParameters() 
+<< nl;
     Info << "Num global params "<< nonbonded->getNumGlobalParameters() << nl;
     Info << "Nonbonded method "<< nonbonded->getNonbondedMethod() << nl;
     Info << "Cutoff distance "<< nonbonded->getCutoffDistance() << nl;
     Info << "==============================="<<nl;    
 
+    
     solver->system->addForce(nonbonded);
+    
     Platform& platform = Platform::getPlatformByName("OpenCL");
-    solver->integrator =  new VerletIntegrator(solver->deltaT*OpenMM::PsPerFs);
+    solver->integrator =  new VelocityVerletIntegrator(solver->deltaT*OpenMM::PsPerFs);
     solver->context = new Context(*solver->system,*solver->integrator,platform);
     
     Info << "Initialised sytem on OMM with " <<
@@ -144,11 +149,14 @@ void extractCoeffParameters(const MOLECULE& mol,
 				if(coefflist[c] == "sigma")
                                     coeffAB = p.coeffVals()[c][i][j]/1e-9;
 				else if(coefflist[c] == "epsilon")
-                                    coeffAB = p.coeffVals()[c][i][j]*6.02214129e23/1e3f;
+                                    coeffAB = 
+p.coeffVals()[c][i][j]*6.02214129e23/1e3f;
                                 else if(coefflist[c] == "D")
-                                    coeffAB = p.coeffVals()[c][i][j] * 6.02214129e20;
+                                    coeffAB = p.coeffVals()[c][i][j] * 
+6.02214129e20;
                                 else if(coefflist[c] == "alpha")
-                                    coeffAB = p.coeffVals()[c][i][j] * 1.0f / 1e9;
+                                    coeffAB = p.coeffVals()[c][i][j] * 1.0f / 
+1e9;
                                 else if(coefflist[c] == "r0")
                                     coeffAB = p.coeffVals()[c][i][j] * 1e9;
                                 
@@ -156,12 +164,14 @@ void extractCoeffParameters(const MOLECULE& mol,
 				std::stringstream outAB;		
 				outAB << coeffAB;
 				ABstr = outAB.str();
-				std::string tempstr = ABstr+"*("+idAStr+"1*"+idBStr+"2)";
+				std::string tempstr = 
+ABstr+"*("+idAStr+"1*"+idBStr+"2)";
 
 				if(counter == 0)
 					coeffstr[c] = coeffstr[c]+""+tempstr;
 				else
-					coeffstr[c] = coeffstr[c]+" + "+tempstr;			
+					coeffstr[c] = coeffstr[c]+" + "+tempstr;	
+		
 				counter++;
 			}
 		}
@@ -183,6 +193,8 @@ void extractOFParticles(struct poly_solver_t* solver,
         temp = solver->plid->nIds();
     
     const int species = temp;
+    int numMolecules = 0;
+    int numParticles = 0;
     
     int* midx=NULL;
 	 
@@ -193,7 +205,7 @@ void extractOFParticles(struct poly_solver_t* solver,
             const polyMolecule::constantProperties& constprop = 
                     mol.constProps(m().id());
             int molsize = constprop.sites().size();
-
+            numMolecules++;
 
             //allocate memory for array holding molecule index based on molecule size
             midx = (int*) malloc(sizeof(int)*molsize);
@@ -218,18 +230,49 @@ void extractOFParticles(struct poly_solver_t* solver,
                         params[species-1] = tempmolcharge;
                 
                 nonbonded->addParticle(params);
-                
                 itr++;
+                numParticles++;
             }
             //add exclusion for each molecule obtained
             if(molsize>1)
 			for(int i=0;i<molsize-1;i++)
 				for(int j=i+1;j<molsize;j++)
-					nonbonded->addExclusion(midx[i],midx[j]);
-        	    // clear the mol id list for further assignment
+					
+            nonbonded->addExclusion(midx[i],midx[j]);
+            // clear the mol id list for further assignment
             free(midx);
 
     }//first for loop ends
+    
+    solver->isMolecular = (bool) numMolecules != numParticles;
+    //solver->system->setIsMolecular(solver->isMolecular);
+    
+    if(solver->isMolecular){
+        /**
+         * if the simulation is molecular then assign the required
+         * information to the openmm system to enable molecular integration
+         * to occur seamlessly 
+         * 
+         * *assign the unique number of molecules in the simulation
+         * by obtaining the number from openfoam
+         * 
+         * *assign the values of moment of inertia
+         */
+        label uniquemolnumber = solver->pot->idList().size();
+        solver->system->setNumberofIds(uniquemolnumber);
+        
+        int n = 0;
+        double lengthnm = solver->refLength * NM;
+        
+        while(n<uniquemolnumber){
+            const polyMolecule::constantProperties& constprop = 
+                    mol.constProps(n);
+            const diagTensor& m = constprop.momentOfInertia();
+            solver->system->addMomentofInertia(
+                OpenMM::Vec3(m.xx()*lengthnm,m.yy()*lengthnm,m.zz()*lengthnm));
+            n++;
+        }
+    }
 }
 
 
@@ -247,11 +290,12 @@ int extractOFPostoOMM(std::vector<Vec3>& posInNm,struct poly_solver_t* sol,
         int m = 0;
 
         while (m<molsize) {
-            Foam::vector rI = (mol().sitePositions()[m] - bb.min())*sol->refLength*NM;
+            Foam::vector rI = (mol().sitePositions()[m] - 
+bb.min())*sol->refLength*NM;
             posInNm.push_back(Vec3(rI.x(), rI.y(), rI.z()));
             m++;
+            numParticles += 1;
         }
-        numParticles += molsize;
         numMols++;
     }
     
@@ -259,16 +303,40 @@ int extractOFPostoOMM(std::vector<Vec3>& posInNm,struct poly_solver_t* sol,
  
 }
 
+int extractOFVeltoOMM(std::vector<Vec3>& velInNm, struct poly_solver_t* sol,int particles)
+{
+	int numMols = 0;
+	velInNm.clear();
+	const double nmconversion = sol->refVelocity*1e-12/NANO;
+    	
+	IDLList<polyMolecule>::iterator mol(sol->molecules->begin());
+	
+	for (mol = sol->molecules->begin(); mol != sol->molecules->end(); 
+++mol){
+		numMols++;
+		Foam::vector vi = mol().v()*nmconversion;
+		velInNm.push_back(Vec3(vi.x(),vi.y(),vi.z()));
+	}
+	
+	//make remaining particles to zero
+	while(numMols<particles){
+	    velInNm.push_back(Vec3(0.0,0.0,0.0));
+	    numMols++;
+	}
+	return numMols;
+}
 int setOFforce(struct poly_solver_t* solver, const std::vector<Vec3>& ommForces)
 {
 	IDLList<polyMolecule>::iterator mol(solver->molecules->begin());
 	int numparticle = 0;
 
-    for (mol = solver->molecules->begin(); mol != solver->molecules->end(); ++mol){
+    for (mol = solver->molecules->begin(); mol != solver->molecules->end(); 
+++mol){
         int molsize = mol().siteForces().size();
         int m = 0;
 		while(m<molsize){
-			mol().siteForces()[m] = Foam::vector                      
+			mol().siteForces()[m] = Foam::vector                     
+ 
                         (
                             ommForces[numparticle][0],
                             ommForces[numparticle][1],
@@ -282,18 +350,21 @@ int setOFforce(struct poly_solver_t* solver, const std::vector<Vec3>& ommForces)
 }
 
 //set OMM box
-void setOMMBox(struct poly_solver_t* solver, const boundBox& bBoxOF,const double dt)
+void setOMMBox(struct poly_solver_t* solver, const boundBox& bBoxOF,const double 
+dt)
 {
 	solver->refLength = solver->redUnits->refLength();
 	solver->refMass = solver->redUnits->refMass();
 	solver->refForce = solver->redUnits->refForce();
 	solver->refCharge = solver->redUnits->refCharge();
 	solver->refTime = solver->redUnits->refTime();
+	solver->refVelocity = solver->redUnits->refVelocity();
 	// Convert to femtoseconds [fs] for OpenMM: 
 	solver->deltaT = dt*solver->refTime/FEM2SEC;
 	
 	//convert to reduced omm rcut size
-	solver->rCutInNM = solver->molecules->pot().pairPotentials().rCutMax()*solver->refLength/NANO;
+	solver->rCutInNM = 
+solver->molecules->pot().pairPotentials().rCutMax()*solver->refLength/NANO;
 	// Convert individual bounding-box length-scales to nanometres [nm]
 	double Lx = bBoxOF.span().x()*solver->refLength/NANO;
 	double Ly = bBoxOF.span().y()*solver->refLength/NANO;
@@ -326,7 +397,34 @@ void getOMMState(const Context* context,std::vector<Vec3>& statearray)
 //        enum STATES st)
 {
 	statearray.clear();
-	State state = context->getState(OpenMM::State::Forces|State::Energy,true);
+	State state = 
+context->getState(OpenMM::State::Forces|State::Energy,true);
 	statearray = state.getForces();
         
+}
+
+int extractOFQ(const struct poly_solver_t* solver, std::vector<OpenMM::Tensor>& moleculeQ)
+{
+    int numMols = 0;
+    moleculeQ.clear();
+    
+    IDLList<polyMolecule>::iterator mol(solver->molecules->begin());
+    
+    for (mol = solver->molecules->begin(); mol != solver->molecules->end(); ++mol)
+    {
+	numMols++;
+	Foam::tensor& temp = mol().Q();
+	moleculeQ.push_back(
+	      OpenMM::Tensor(temp.xx(),temp.xy(),temp.xz(),
+	      temp.yx(),temp.yy(),temp.yz(),
+	      temp.zx(),temp.zy(),temp.zz()));
+    }
+    
+    return numMols;
+}
+
+int extractOFSiteRefPositions(const struct poly_solver_t* solver, std::vector<OpenMM::Vec3>& siteRefPositions)
+{
+    const double converter = solver->refLength*NM;
+    
 }

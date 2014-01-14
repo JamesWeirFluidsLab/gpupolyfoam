@@ -76,28 +76,28 @@ struct poly_solver_t
 	clockTimer* evolveTimer;
 //declare OMM data structure
 #ifdef USE_OMM
-    clockTimer* ommTimer;
-    clockTimer* openFoamTimer;
+        clockTimer* ommTimer;
+        clockTimer* openFoamTimer;
 	System* system;
 	Context* context;
-	Integrator* integrator;
+	VelocityVerletIntegrator* integrator;
 	Vec3 bBoxOMMinNm;
-	double refTime, refMass, refLength, refForce, refCharge, deltaT,rCutInNM;
-        polyIdPairs* plid; //open foam
+	double refTime, refMass, refLength, refForce, refCharge, refVelocity, deltaT,rCutInNM;
+        polyIdPairs* plid; //open foam polyIdPairs class for gpu solver
+        bool isMolecular;
 #endif
 	poly_solver_t() : 
 	redUnits(0), pot(0), molecules(0),
 #ifdef USE_OMM
-	evolveTimer(0),system(0), context(0), integrator(0){}
+	evolveTimer(0),system(0), context(0), integrator(0), isMolecular(false){}
 #else
 	evolveTimer(0) {}
 #endif
 	~poly_solver_t() {
-		delete redUnits; delete pot; 
-		delete molecules; delete evolveTimer;
+	delete redUnits; delete pot; 
+	delete molecules; delete evolveTimer;
 #ifdef USE_OMM
-		std::cout << "Deleting everything ..."<<std::endl;
-		delete context; delete integrator; delete system;
+	delete context; delete integrator; delete system;
 #endif
 	}
 };

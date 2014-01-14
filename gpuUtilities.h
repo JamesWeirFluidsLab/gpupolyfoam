@@ -46,6 +46,12 @@ void extractOFParticles(struct poly_solver_t* solver,
 int extractOFPostoOMM(std::vector<Vec3>& posinnm,
                       const struct poly_solver_t* sol,
                       const boundBox& bb);
+
+/**
+ * extract OF velocities and generate OMM equivalent array
+ * to be passed to OMM system
+ */
+int extractOFVeltoOMM(std::vector<Vec3>& velinnm, const struct poly_solver_t* sol, int particles);
 /**
  * setOMMBox
  * extract information from OF to generate relevant data structures
@@ -72,6 +78,19 @@ int setOFforce(struct poly_solver_t* solver, const std::vector<Vec3>& ommForces)
  * get information from openmm
  */
 void getOMMState(const Context* context,std::vector<Vec3>& statearray);
+
+/**
+ * extractOFQ
+ * this function extracts Q tensor for each molecule and assigns it to 
+ * OpenMM array with conversion
+ */
+int extractOFQ(const struct poly_solver_t* solver, std::vector<OpenMM::Tensor>& moleculeQ);
+/**
+ * extractOFSiteRefPositions
+ * this function extracts site reference positions from each molecule of OF system and pushes 
+ * to vector of Vec3 type which will be equal to number of molecules
+ */
+int extractOFSiteRefPositions(const struct poly_solver_t* solver, std::vector<OpenMM::Vec3>& siteRefPositions);
 //                enum STATES st);
 #endif	/* GPUUTILITIES_H */
 
