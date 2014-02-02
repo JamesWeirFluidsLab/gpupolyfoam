@@ -34,6 +34,8 @@ using namespace OpenMM;
 
 //CONSTANT VARIABLES 
 #define FEM2SEC 1e-15
+#define E18 1e18
+#define E12 1e-12
 #define NM 1e9
 #define NANO 1e-9
 #define NM2RUF 1.66053886e-12 

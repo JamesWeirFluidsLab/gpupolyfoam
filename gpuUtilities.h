@@ -9,6 +9,7 @@
 #define	GPUUTILITIES_H
 
 //#include "gpuPolyFoam.h"
+#include <../cuda-5.0/include/CL/cl_platform.h>
 
 extern std::vector<Vec3> ommpositions, ommforces, ofpositions;
 
@@ -91,6 +92,29 @@ int extractOFQ(const struct poly_solver_t* solver, std::vector<OpenMM::Tensor>& 
  * to vector of Vec3 type which will be equal to number of molecules
  */
 int extractOFSiteRefPositions(const struct poly_solver_t* solver, std::vector<OpenMM::Vec3>& siteRefPositions);
+/**
+ * extractMoleculePositions
+ * this function extracts Positions of a molecule from each molecule of OF system and pushes
+ * to vector of Vec3 type which will be equal to number of molecules
+ */
+int extractMoleculePositions(const struct poly_solver_t* solver, std::vector<OpenMM::Vec3>& moleculePositions);
+
+/**
+ * extractMoleculePI
+ * this function extracts PI values from each molecule of OF system and pushes to OMM
+ * vector of Vec3 type which will be equal to number of molecules
+ */
+int extractMoleculePI(const struct poly_solver_t* solver, std::vector<OpenMM::Vec3>& moleculePI);
+
+/**
+ * setOFpositions
+ */
+void setOFPositions(struct poly_solver_t* solver, const std::vector<Vec3>& posInNm);
+
+/**
+ * setOFVelocities
+ */
+void setOFVelocities(struct poly_solver_t* solver, const std::vector<Vec3>& velInNm);
 //                enum STATES st);
 #endif	/* GPUUTILITIES_H */
 

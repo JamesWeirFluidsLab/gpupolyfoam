@@ -5,7 +5,7 @@ void initialiseOMM(struct poly_solver_t* solver)
 {
 	// Load OpenMM platform-specific plugins:
     	
-Platform::loadPluginsFromDirectory(Platform::getDefaultPluginsDirectory());
+	Platform::loadPluginsFromDirectory(Platform::getDefaultPluginsDirectory());
 	int numPlatforms = Platform::getNumPlatforms();
 	cout<<numPlatforms<<" OMM platforms found on this system"<<std::endl;
 	for(int i=0;i<numPlatforms;i++)
@@ -237,8 +237,7 @@ void extractOFParticles(struct poly_solver_t* solver,
             if(molsize>1)
 			for(int i=0;i<molsize-1;i++)
 				for(int j=i+1;j<molsize;j++)
-					
-            nonbonded->addExclusion(midx[i],midx[j]);
+					nonbonded->addExclusion(midx[i],midx[j]);
             // clear the mol id list for further assignment
             free(midx);
 
@@ -262,14 +261,14 @@ void extractOFParticles(struct poly_solver_t* solver,
         solver->system->setNumberofIds(uniquemolnumber);
         
         int n = 0;
-        double lengthnm = solver->refLength * NM;
+        const double moIconversion = (solver->refLength * solver->refLength * solver->refMass * E18)/DALTON;
         
         while(n<uniquemolnumber){
             const polyMolecule::constantProperties& constprop = 
                     mol.constProps(n);
             const diagTensor& m = constprop.momentOfInertia();
             solver->system->addMomentofInertia(
-                OpenMM::Vec3(m.xx()*lengthnm,m.yy()*lengthnm,m.zz()*lengthnm));
+                OpenMM::Vec3(m.xx()*moIconversion,m.yy()*moIconversion,m.zz()*moIconversion));
             n++;
         }
     }
@@ -325,6 +324,7 @@ int extractOFVeltoOMM(std::vector<Vec3>& velInNm, struct poly_solver_t* sol,int 
 	}
 	return numMols;
 }
+
 int setOFforce(struct poly_solver_t* solver, const std::vector<Vec3>& ommForces)
 {
 	IDLList<polyMolecule>::iterator mol(solver->molecules->begin());
@@ -425,6 +425,117 @@ int extractOFQ(const struct poly_solver_t* solver, std::vector<OpenMM::Tensor>& 
 
 int extractOFSiteRefPositions(const struct poly_solver_t* solver, std::vector<OpenMM::Vec3>& siteRefPositions)
 {
+	// MOLECULE& mol = *solver->molecules;
     const double converter = solver->refLength*NM;
+    int numMols = 0;
+    siteRefPositions.clear();
+    label uniquemolnumber = solver->pot->idList().size();
+    Info << "Unique number of molecules found " << uniquemolnumber << nl;
     
+    //IDLList<polyMolecule>::iterator mol(solver->molecules->begin());
+    
+    //for (mol = solver->molecules->begin(); mol != solver->molecules->end(); ++mol)
+    while(numMols<uniquemolnumber)
+    {
+	const polyMolecule::constantProperties& constprop = solver->molecules->constProps(numMols);
+	int molsize = constprop.sites().size();
+	int a = 0;
+	while(a<molsize){
+		const Foam::vector& vi = constprop.sites()[a].siteReferencePosition()*converter;
+#ifdef FULLDEBUG
+		Info << "DEBUG: SITEREFPOS " << vi << nl;
+#endif
+		siteRefPositions.push_back(OpenMM::Vec3(vi.x(),vi.y(),vi.z()));
+		a++;
+	}
+	numMols++;
+    }
+    
+    return numMols;
 }
+
+int extractMoleculePositions(const struct poly_solver_t* solver, std::vector<OpenMM::Vec3>& moleculePositions){
+	const double converter = solver->refLength*NM;
+	int numMols = 0;
+	moleculePositions.clear();
+
+	IDLList<polyMolecule>::iterator mol(solver->molecules->begin());
+
+	for (mol = solver->molecules->begin(); mol!=solver->molecules->end(); ++mol)
+	{
+		const Foam::vector& vi = mol().position()*converter;
+		moleculePositions.push_back(OpenMM::Vec3(vi.x(),vi.y(),vi.z()));
+		numMols++;
+	}	
+	
+	return numMols;
+}
+
+int extractMoleculePI(const struct poly_solver_t* solver, std::vector<OpenMM::Vec3>& moleculePI)
+{
+	double sqvel = solver->refVelocity*solver->refLength*solver->refMass;
+	const double converter = sqvel*1e6/DALTON;
+	moleculePI.clear();
+	int numMols = 0;
+	IDLList<polyMolecule>::iterator mol(solver->molecules->begin());
+	for (mol = solver->molecules->begin(); mol!=solver->molecules->end(); ++mol)
+	{
+		const Foam::vector& pi = mol().pi()*converter;
+		moleculePI.push_back(OpenMM::Vec3(pi.x(),pi.y(),pi.z()));
+		numMols++;
+	}
+	
+}
+
+void setOFPositions(poly_solver_t* solver, const std::vector< Vec3 >& posInNm)
+{
+    IDLList<polyMolecule>::iterator mol(solver->molecules->begin());
+    int counter = 0;
+    double divisor = NANO/solver->refLength;
+
+    for (mol = solver->molecules->begin(); mol != solver->molecules->end(); 
+++mol)
+    {
+        mol().position() = Foam::vector(
+                                  posInNm[counter][0],
+                                  posInNm[counter][1],
+                                  posInNm[counter][2]
+                                  )* divisor;
+	
+        bool inCell = solver->molecules->mesh().pointInCell(mol().position(), mol().cell());
+
+        if(!inCell)
+        {
+            label cellI = solver->molecules->mesh().findCell(mol().position());
+
+            if(cellI != -1)
+            {
+                mol().cell() = cellI;
+            }
+            else
+            {
+                printf("Error raised by incell check\n");
+            }
+        }
+        counter++;
+    }
+}
+
+void setOFVelocities(poly_solver_t* solver, const std::vector< Vec3 >& velInNm)
+{
+    IDLList<polyMolecule>::iterator mol(solver->molecules->begin());                                                       
+    int counter = 0;
+    double divisor = NANO/(solver->refVelocity*E12);
+    
+    for(mol = solver->molecules->begin();mol!=solver->molecules->end();++mol)                                                            
+    {
+        mol().v() = Foam::vector(
+                                velInNm[counter][0],                                                   
+                                velInNm[counter][1],                                                   
+                                velInNm[counter][2]                                                    
+                                )*divisor;                                                     
+        counter++;
+    }
+}
+
+
