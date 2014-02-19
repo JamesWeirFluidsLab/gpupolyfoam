@@ -8,8 +8,6 @@
 #ifndef GPUUTILITIES_H
 #define	GPUUTILITIES_H
 
-//#include "gpuPolyFoam.h"
-#include <../cuda-5.0/include/CL/cl_platform.h>
 
 extern std::vector<Vec3> ommpositions, ommforces, ofpositions;
 
@@ -115,6 +113,17 @@ void setOFPositions(struct poly_solver_t* solver, const std::vector<Vec3>& posIn
  * setOFVelocities
  */
 void setOFVelocities(struct poly_solver_t* solver, const std::vector<Vec3>& velInNm);
+
+/**
+ * setOFSitePositions
+ */
+void setOFSitePositions(struct poly_solver_t* solver, const std::vector<Vec3>& sitePositions);
+
+void extractMolecularInfo(struct poly_solver_t* solver, std::vector<int>& moleculeInfo);
+
+void extractMomentOfInertia(const struct poly_solver_t* solver, std::vector<Vec3>& momentOfInertia,
+	std::vector<std::vector<unsigned int> >& moleculeState
+);
 //                enum STATES st);
 #endif	/* GPUUTILITIES_H */
 

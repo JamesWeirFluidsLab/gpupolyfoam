@@ -244,7 +244,6 @@ void extractOFParticles(struct poly_solver_t* solver,
     }//first for loop ends
     
     solver->isMolecular = (bool) numMolecules != numParticles;
-    //solver->system->setIsMolecular(solver->isMolecular);
     
     if(solver->isMolecular){
         /**
@@ -255,24 +254,58 @@ void extractOFParticles(struct poly_solver_t* solver,
          * *assign the unique number of molecules in the simulation
          * by obtaining the number from openfoam
          * 
-         * *assign the values of moment of inertia
          */
-        label uniquemolnumber = solver->pot->idList().size();
-        solver->system->setNumberofIds(uniquemolnumber);
-        
-        int n = 0;
-        const double moIconversion = (solver->refLength * solver->refLength * solver->refMass * E18)/DALTON;
-        
-        while(n<uniquemolnumber){
-            const polyMolecule::constantProperties& constprop = 
-                    mol.constProps(n);
-            const diagTensor& m = constprop.momentOfInertia();
-            solver->system->addMomentofInertia(
-                OpenMM::Vec3(m.xx()*moIconversion,m.yy()*moIconversion,m.zz()*moIconversion));
-            n++;
-        }
+        solver->system->setNumberofIds(solver->uniqueMolecules);
+	solver->system->setIsMolecular(solver->isMolecular);
     }
 }
+
+void extractMolecularInfo(poly_solver_t* solver,std::vector<int>& moleculeInfo)
+{
+    IOdictionary moleculePropertiesDict
+    (
+	IOobject
+	(
+	    "moleculeProperties",
+	    solver->molecules->mesh().time().constant(),
+	    solver->molecules->mesh(),
+	    IOobject::MUST_READ,
+	    IOobject::NO_WRITE
+	)
+    );
+    
+    const List<word> mols (moleculePropertiesDict.lookup("idList"));
+    const dictionary& subdict(moleculePropertiesDict.subDict("moleculeProperties"));
+    List<word> ids(subdict.toc());
+    if(ids.size() != mols.size())
+      FatalErrorIn("GpuPolyFoam::molecularInfo()") << 
+		" IdList size cannot be collected properly " <<
+		abort(FatalError);
+
+    solver->uniqueMolecules = (int) mols.size();
+    moleculeInfo.resize(solver->uniqueMolecules);
+    
+    int ctr = 0;
+    while(ctr < solver->uniqueMolecules){
+	List<word> temp(subdict.subDict(ids[ctr]).lookup("siteIds"));
+	int s = temp.size();
+	if(s == 1)
+	    moleculeInfo[ctr] = 1;
+	else{
+	    word common = temp[0];
+	    int unique = 1;
+	    int same = 1;
+	    for(int i = 1;i<s;++i){
+		if(common == temp[i])
+		    same++;    
+	    }
+	    unique += (s - same);
+	    moleculeInfo[ctr] = unique;
+	}
+	++ctr;
+    }
+}
+
 
 
 int extractOFPostoOMM(std::vector<Vec3>& posInNm,struct poly_solver_t* sol,
@@ -425,16 +458,11 @@ int extractOFQ(const struct poly_solver_t* solver, std::vector<OpenMM::Tensor>& 
 
 int extractOFSiteRefPositions(const struct poly_solver_t* solver, std::vector<OpenMM::Vec3>& siteRefPositions)
 {
-	// MOLECULE& mol = *solver->molecules;
     const double converter = solver->refLength*NM;
     int numMols = 0;
     siteRefPositions.clear();
-    label uniquemolnumber = solver->pot->idList().size();
-    Info << "Unique number of molecules found " << uniquemolnumber << nl;
+    int uniquemolnumber = solver->uniqueMolecules;
     
-    //IDLList<polyMolecule>::iterator mol(solver->molecules->begin());
-    
-    //for (mol = solver->molecules->begin(); mol != solver->molecules->end(); ++mol)
     while(numMols<uniquemolnumber)
     {
 	const polyMolecule::constantProperties& constprop = solver->molecules->constProps(numMols);
@@ -442,9 +470,6 @@ int extractOFSiteRefPositions(const struct poly_solver_t* solver, std::vector<Op
 	int a = 0;
 	while(a<molsize){
 		const Foam::vector& vi = constprop.sites()[a].siteReferencePosition()*converter;
-#ifdef FULLDEBUG
-		Info << "DEBUG: SITEREFPOS " << vi << nl;
-#endif
 		siteRefPositions.push_back(OpenMM::Vec3(vi.x(),vi.y(),vi.z()));
 		a++;
 	}
@@ -537,5 +562,81 @@ void setOFVelocities(poly_solver_t* solver, const std::vector< Vec3 >& velInNm)
         counter++;
     }
 }
+
+void setOFSitePositions(poly_solver_t* solver, const std::vector< Vec3 >& sitePositions)
+{
+    MOLECULE& mol = *solver->molecules;
+    IDLList<polyMolecule>::iterator m(mol.begin());
+    double converter = NANO/solver->refLength;
+    
+    int atomCounter = 0;
+    for (m = mol.begin(); m != mol.end(); ++m)
+    {
+            const polyMolecule::constantProperties& constprop = 
+                    mol.constProps(0);
+            int molsize = constprop.sites().size();
+	    int counter = 0;
+	    List<Foam::vector>& sitepos = m().sitePositions();
+	    while(counter<molsize){
+		sitepos[counter] = Foam::vector(
+		    sitePositions[atomCounter][0],
+		    sitePositions[atomCounter][1],
+		    sitePositions[atomCounter][2]
+		) * converter;
+
+		++atomCounter;
+		counter++;
+	    }//while loop
+	    
+	    
+    }//for loop
+
+}
+
+void extractMomentOfInertia(poly_solver_t* solver, std::vector< Vec3 >& momentOfInertia,
+      std::vector<std::vector<unsigned int> >& moleculeState
+)
+{
+    
+    int n = 0;
+    const double moIconversion = (solver->refLength * solver->refLength * solver->refMass * E18)/DALTON;
+    
+    /**
+    * assigning moment of inertia of openfoam to OpenMM
+    * this process also covers converting the OF values to 
+    * equivalent OMM measurements
+    * 
+    * an array signifying OF values which specifies the molecular status
+    * of each type of molecule, such as 
+    * if pointMolecule
+    * if LinearMolecule
+    * not PointMolecule
+    * not LinearMolecule
+    * this is arranged in array in the form specified above
+    * therefore 0,1,2,3
+    */
+    
+    int uniquemol = solver->uniqueMolecules;
+    momentOfInertia.resize(uniquemol);
+    moleculeState.resize(uniquemol);
+    
+    while(n<uniquemol){
+      const polyMolecule::constantProperties& constprop = solver->molecules->constProps(n);
+      const diagTensor& m = constprop.momentOfInertia();
+      momentOfInertia[n] = OpenMM::Vec3(m.xx()*moIconversion,m.yy()*moIconversion,m.zz()*moIconversion);
+      unsigned int pm = (unsigned int) constprop.pointMolecule();
+      unsigned int lm = (unsigned int) constprop.linearMolecule();
+      unsigned int npm = (unsigned int) !constprop.pointMolecule();
+      unsigned int nlm = (unsigned int) !constprop.linearMolecule();
+      
+      moleculeState[n].push_back(pm);
+      moleculeState[n].push_back(lm);
+      moleculeState[n].push_back(npm);
+      moleculeState[n].push_back(nlm);
+      
+      n++;
+    }
+}
+
 
 

@@ -86,6 +86,7 @@ struct poly_solver_t
 	Vec3 bBoxOMMinNm;
 	double refTime, refMass, refLength, refForce, refCharge, refVelocity, deltaT,rCutInNM;
         polyIdPairs* plid; //open foam polyIdPairs class for gpu solver
+        int uniqueMolecules;
         bool isMolecular;
 #endif
 	poly_solver_t() : 
