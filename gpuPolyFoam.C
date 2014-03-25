@@ -70,8 +70,10 @@ int main(int argc, char *argv[])
   const boundBox bBoxOF = mesh.bounds();
   setOMMBox(solver,bBoxOF,dt);
   initialiseOMM(solver);
+  
+  
   std::vector<OpenMM::Vec3> posInNm,velInNm,
-    molPositions, moleculePI, sitePositions, momentOfInertia;
+    molPositions, moleculePI, sitePositions, momentOfInertia,atomForces;
   std::vector<OpenMM::Tensor> moleculeQ;
   std::vector<std::vector<unsigned int> > moleculeStatus;
   std::vector<OpenMM::Vec3> siteRefPositions;
@@ -81,44 +83,19 @@ int main(int argc, char *argv[])
   int t = extractOFQ(solver,moleculeQ);
   t = extractOFSiteRefPositions(solver, siteRefPositions);
   
-  t = extractMoleculePositions(solver, molPositions);
+//   t = extractMoleculePositions(solver, molPositions);
   t = extractMoleculePI(solver, moleculePI);
   extractMomentOfInertia(solver, momentOfInertia, moleculeStatus);
-  
-  
-//   num = 0;
-//   int ct = 0;
-//   while(num<solver->uniqueMolecules){
-//     Info << "Innertia" << nl;
-//       Info << momentOfInertia[num][0] <<
-// 	    " " << momentOfInertia[num][1] <<
-// 	    " " << momentOfInertia[num][2] << nl;
-//       Info << "MoleculeStatus " << nl;
-//       Info << moleculeStatus[num][0] <<
-// 	    " " << moleculeStatus[num][1] <<
-// 	    " " << moleculeStatus[num][2] <<
-// 	    " " << moleculeStatus[num][3] << nl;
-//       int n = molecularInfo[num];
-//       Info << "SiteRefPos " << nl;
-//       for(int j=0;j<n;++j){
-// 	  Info << siteRefPositions[ct+j][0] <<
-// 	  " " << siteRefPositions[ct+j][1] <<
-// 	  " " << siteRefPositions[ct+j][2] << nl;
-//       }
-//       ct += n;
-//       num++;
-//   }
   
     
   Info << "extracted " << num 
   << " particles and " << nummols
   << " from OF" << nl;
-    
-    
+      
   solver->context->setPositions(posInNm);
   solver->context->setVelocities(velInNm);
   solver->context->setMoleculeQ(moleculeQ);
-  solver->context->setMoleculePositions(molPositions);
+//   solver->context->setMoleculePositions(molPositions);
   solver->context->setSiteRefPositions(siteRefPositions);
   solver->context->setMoleculePI(moleculePI);
   solver->context->setMomentOfInertia(momentOfInertia);
@@ -135,6 +112,7 @@ int main(int argc, char *argv[])
   solver->openFoamTimer->startClock();
   #endif
 
+//   exit(0);
   Info << "\nStarting time loop\n" << endl;
   
   while (runTime.loop()){
@@ -169,20 +147,21 @@ int main(int argc, char *argv[])
     posInNm.clear();
     velInNm.clear();
     OpenMM::State state;
-    state = solver->context->getState(State::Positions|State::MoleculePos|State::Velocities,true);
+    state = solver->context->getState(State::Positions|State::MoleculePos|State::Forces|State::Velocities,true);
     posInNm = state.getMoleculePos();
     velInNm = state.getVelocities();
     sitePositions = state.getPositions();
+    atomForces = state.getForces();
     
     solver->ommTimer->stopClock();
     
-    //set the positions back to openFoam
-    //set the velocities back to openFOAM
+//     set the positions back to openFoam
+//     set the velocities back to openFOAM
     setOFPositions(solver,posInNm);
     setOFVelocities(solver,velInNm);
     setOFSitePositions(solver,sitePositions);
     
-    //num = setOFforce(solver,atomForces);
+    num = setOFforce(solver,atomForces);
     
     solver->openFoamTimer->startClock();
     

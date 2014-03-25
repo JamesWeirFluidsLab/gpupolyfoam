@@ -213,6 +213,7 @@ void extractOFParticles(struct poly_solver_t* solver,
             //now traverse throught the N sites of each molecule size obtained
             //from previous retrive
             int itr = 0;
+	    
             while(itr<molsize)
             {
                 double tempmolmass = constprop.sites()[itr].siteMass()
@@ -233,6 +234,7 @@ void extractOFParticles(struct poly_solver_t* solver,
                 itr++;
                 numParticles++;
             }
+//             Info << " " << nl;
             //add exclusion for each molecule obtained
             if(molsize>1)
 			for(int i=0;i<molsize-1;i++)
@@ -572,23 +574,37 @@ void setOFSitePositions(poly_solver_t* solver, const std::vector< Vec3 >& sitePo
     int atomCounter = 0;
     for (m = mol.begin(); m != mol.end(); ++m)
     {
-            const polyMolecule::constantProperties& constprop = 
-                    mol.constProps(0);
-            int molsize = constprop.sites().size();
-	    int counter = 0;
-	    List<Foam::vector>& sitepos = m().sitePositions();
-	    while(counter<molsize){
-		sitepos[counter] = Foam::vector(
-		    sitePositions[atomCounter][0],
-		    sitePositions[atomCounter][1],
-		    sitePositions[atomCounter][2]
-		) * converter;
+	const polyMolecule::constantProperties& constprop = 
+		mol.constProps(0);
+	int molsize = constprop.sites().size();
+	int counter = 0;
+	List<Foam::vector>& sitepos = m().sitePositions();
+	while(counter<molsize){
+	    sitepos[counter] = Foam::vector(
+		sitePositions[atomCounter][0],
+		sitePositions[atomCounter][1],
+		sitePositions[atomCounter][2]
+	    ) * converter;
 
-		++atomCounter;
-		counter++;
-	    }//while loop
+	    ++atomCounter;
+	    counter++;
+	}//while loop
 	    
-	    
+	bool inCell = solver->molecules->mesh().pointInCell(m().position(), m().cell());
+
+        if(!inCell)
+        {
+            label cellI = solver->molecules->mesh().findCell(m().position());
+
+            if(cellI != -1)
+            {
+                m().cell() = cellI;
+            }
+            else
+            {
+                printf("Error raised by incell check in site positions\n");
+            }
+        }    
     }//for loop
 
 }
