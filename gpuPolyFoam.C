@@ -70,8 +70,11 @@ int main(int argc, char *argv[])
   const boundBox bBoxOF = mesh.bounds();
   setOMMBox(solver,bBoxOF,dt);
   initialiseOMM(solver);
+  
+  
   std::vector<OpenMM::Vec3> posInNm,velInNm,
     molPositions, moleculePI, sitePositions, momentOfInertia,siteForces;
+
   std::vector<OpenMM::Tensor> moleculeQ;
   std::vector<std::vector<unsigned int> > moleculeStatus;
   std::vector<OpenMM::Vec3> siteRefPositions;
@@ -84,12 +87,11 @@ int main(int argc, char *argv[])
 //   t = extractMoleculePositions(solver, molPositions);
   t = extractMoleculePI(solver, moleculePI);
   extractMomentOfInertia(solver, momentOfInertia, moleculeStatus);  
-    
+
   Info << "extracted " << num 
   << " particles and " << nummols
   << " from OF" << nl;
-    
-    
+      
   solver->context->setPositions(posInNm);
   solver->context->setVelocities(velInNm);
   solver->context->setMoleculeQ(moleculeQ);
@@ -103,6 +105,7 @@ int main(int argc, char *argv[])
   solver->openFoamTimer->startClock();
   #endif
 
+//   exit(0);
   Info << "\nStarting time loop\n" << endl;
   
   while (runTime.loop()){
@@ -122,6 +125,7 @@ int main(int argc, char *argv[])
     posInNm.clear();
     velInNm.clear();
     OpenMM::State state;
+
     state = solver->context->getState(
       State::Positions|State::MoleculePos|State::Velocities|State::Forces,true);
     posInNm = state.getMoleculePos();
@@ -131,8 +135,8 @@ int main(int argc, char *argv[])
     
     solver->ommTimer->stopClock();
     
-    //set the positions back to openFoam
-    //set the velocities back to openFOAM
+//     set the positions back to openFoam
+//     set the velocities back to openFOAM
     setOFPositions(solver,posInNm);
     setOFVelocities(solver,velInNm);
     setOFSitePositions(solver,sitePositions);
@@ -140,8 +144,7 @@ int main(int argc, char *argv[])
     num = setOFforce(solver,siteForces);
     
     solver->openFoamTimer->startClock();
-    
-
+ 
     solver->molecules->buildCellOccupancy();
     solver->molecules->updateAcceleration();
     solver->molecules->postPreliminaries();  
