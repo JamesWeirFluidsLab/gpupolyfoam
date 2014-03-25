@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
   int t = extractOFQ(solver,moleculeQ);
   t = extractOFSiteRefPositions(solver, siteRefPositions);
   
-//   t = extractMoleculePositions(solver, molPositions);
+  t = extractMoleculePositions(solver, molPositions);
   t = extractMoleculePI(solver, moleculePI);
   extractMomentOfInertia(solver, momentOfInertia, moleculeStatus);  
 
@@ -93,9 +93,9 @@ int main(int argc, char *argv[])
   << " from OF" << nl;
       
   solver->context->setPositions(posInNm);
-  solver->context->setVelocities(velInNm);
+  solver->context->setMoleculeVelocities(velInNm);
   solver->context->setMoleculeQ(moleculeQ);
-//   solver->context->setMoleculePositions(molPositions);
+  solver->context->setMoleculePositions(molPositions);
   solver->context->setSiteRefPositions(siteRefPositions);
   solver->context->setMoleculePI(moleculePI);
   solver->context->setMomentOfInertia(momentOfInertia);
@@ -127,9 +127,9 @@ int main(int argc, char *argv[])
     OpenMM::State state;
 
     state = solver->context->getState(
-      State::Positions|State::MoleculePos|State::Velocities|State::Forces,true);
+      State::Positions|State::MoleculePos|State::MoleculeVel|State::Forces,true);
     posInNm = state.getMoleculePos();
-    velInNm = state.getVelocities();
+    velInNm = state.getMoleculeVel();
     sitePositions = state.getPositions();
     siteForces = state.getForces();
     

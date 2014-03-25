@@ -353,10 +353,11 @@ int extractOFVeltoOMM(std::vector<Vec3>& velInNm, struct poly_solver_t* sol,int 
 	}
 	
 	//make remaining particles to zero
+	/*
 	while(numMols<particles){
 	    velInNm.push_back(Vec3(0.0,0.0,0.0));
 	    numMols++;
-	}
+	}*/
 	return numMols;
 }
 
