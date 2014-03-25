@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
   setOMMBox(solver,bBoxOF,dt);
   initialiseOMM(solver);
   std::vector<OpenMM::Vec3> posInNm,velInNm,
-    molPositions, moleculePI, sitePositions, momentOfInertia;
+    molPositions, moleculePI, sitePositions, momentOfInertia,siteForces;
   std::vector<OpenMM::Tensor> moleculeQ;
   std::vector<std::vector<unsigned int> > moleculeStatus;
   std::vector<OpenMM::Vec3> siteRefPositions;
@@ -81,34 +81,9 @@ int main(int argc, char *argv[])
   int t = extractOFQ(solver,moleculeQ);
   t = extractOFSiteRefPositions(solver, siteRefPositions);
   
-  t = extractMoleculePositions(solver, molPositions);
+//   t = extractMoleculePositions(solver, molPositions);
   t = extractMoleculePI(solver, moleculePI);
-  extractMomentOfInertia(solver, momentOfInertia, moleculeStatus);
-  
-  
-//   num = 0;
-//   int ct = 0;
-//   while(num<solver->uniqueMolecules){
-//     Info << "Innertia" << nl;
-//       Info << momentOfInertia[num][0] <<
-// 	    " " << momentOfInertia[num][1] <<
-// 	    " " << momentOfInertia[num][2] << nl;
-//       Info << "MoleculeStatus " << nl;
-//       Info << moleculeStatus[num][0] <<
-// 	    " " << moleculeStatus[num][1] <<
-// 	    " " << moleculeStatus[num][2] <<
-// 	    " " << moleculeStatus[num][3] << nl;
-//       int n = molecularInfo[num];
-//       Info << "SiteRefPos " << nl;
-//       for(int j=0;j<n;++j){
-// 	  Info << siteRefPositions[ct+j][0] <<
-// 	  " " << siteRefPositions[ct+j][1] <<
-// 	  " " << siteRefPositions[ct+j][2] << nl;
-//       }
-//       ct += n;
-//       num++;
-//   }
-  
+  extractMomentOfInertia(solver, momentOfInertia, moleculeStatus);  
     
   Info << "extracted " << num 
   << " particles and " << nummols
@@ -118,17 +93,10 @@ int main(int argc, char *argv[])
   solver->context->setPositions(posInNm);
   solver->context->setVelocities(velInNm);
   solver->context->setMoleculeQ(moleculeQ);
-  solver->context->setMoleculePositions(molPositions);
+//   solver->context->setMoleculePositions(molPositions);
   solver->context->setSiteRefPositions(siteRefPositions);
   solver->context->setMoleculePI(moleculePI);
   solver->context->setMomentOfInertia(momentOfInertia);
-
-/*
-  std::vector<Vec3> atomForces;
-  getOMMState(solver->context,atomForces);
-  num = setOFforce(solver,atomForces);
-  solver->molecules->updateAcceleration();
-*/   
   
   solver->ommTimer = new clockTimer(runTime, "openMMTimer", true);
   solver->openFoamTimer = new clockTimer(runTime, "openFoamTimer", true);
@@ -148,31 +116,18 @@ int main(int argc, char *argv[])
 //    solver->molecules->evolveBeforeForces();
     
     solver->openFoamTimer->stopClock();
-/*  
-    num = extractOFPostoOMM(posInNm,solver,bBoxOF);
-    nummols = extractOFVeltoOMM(velInNm,solver,num);
-    int t = extractOFQ(solver,moleculeQ);
-    t = extractMoleculePI(solver, moleculePI);
-*/    
     solver->ommTimer->startClock();
     solver->integrator->step(1);
     
-
-/*    
-    solver->context->setPositions(posInNm);
-    solver->context->setVelocities(velInNm);
-    solver->context->setMoleculeQ(moleculeQ);
-    solver->context->setMoleculePI(moleculePI);
-    getOMMState(solver->context,atomForces);
-    solver->integrator->step(1);
-*/
     posInNm.clear();
     velInNm.clear();
     OpenMM::State state;
-    state = solver->context->getState(State::Positions|State::MoleculePos|State::Velocities,true);
+    state = solver->context->getState(
+      State::Positions|State::MoleculePos|State::Velocities|State::Forces,true);
     posInNm = state.getMoleculePos();
     velInNm = state.getVelocities();
     sitePositions = state.getPositions();
+    siteForces = state.getForces();
     
     solver->ommTimer->stopClock();
     
@@ -182,18 +137,15 @@ int main(int argc, char *argv[])
     setOFVelocities(solver,velInNm);
     setOFSitePositions(solver,sitePositions);
     
-    //num = setOFforce(solver,atomForces);
+    num = setOFforce(solver,siteForces);
     
     solver->openFoamTimer->startClock();
     
 
     solver->molecules->buildCellOccupancy();
     solver->molecules->updateAcceleration();
-    solver->molecules->postPreliminaries();
-    
-//      nummols = extractOFVeltoOMM(velInNm,solver,num);
-//      solver->context->setVelocities(velInNm);
-    
+    solver->molecules->postPreliminaries();  
+  
     #endif
     solver->evolveTimer->stopClock();
     
