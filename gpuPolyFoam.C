@@ -84,9 +84,9 @@ int main(int argc, char *argv[])
   int t = extractOFQ(solver,moleculeQ);
   t = extractOFSiteRefPositions(solver, siteRefPositions);
   
-//   t = extractMoleculePositions(solver, molPositions);
+  t = extractMoleculePositions(solver, molPositions);
   t = extractMoleculePI(solver, moleculePI);
-  extractMomentOfInertia(solver, momentOfInertia, moleculeStatus);  
+  extractMomentOfInertia(solver, momentOfInertia, moleculeStatus);
 
   Info << "extracted " << num 
   << " particles and " << nummols
@@ -95,10 +95,11 @@ int main(int argc, char *argv[])
   solver->context->setPositions(posInNm);
   solver->context->setMoleculeVelocities(velInNm);
   solver->context->setMoleculeQ(moleculeQ);
-//   solver->context->setMoleculePositions(molPositions);
+  solver->context->setMoleculePositions(molPositions);
   solver->context->setSiteRefPositions(siteRefPositions);
   solver->context->setMoleculePI(moleculePI);
   solver->context->setMomentOfInertia(momentOfInertia);
+  solver->context->setMoleculeStatus(moleculeStatus);
   
   solver->ommTimer = new clockTimer(runTime, "openMMTimer", true);
   solver->openFoamTimer = new clockTimer(runTime, "openFoamTimer", true);
@@ -127,11 +128,11 @@ int main(int argc, char *argv[])
     OpenMM::State state;
 
     state = solver->context->getState(
-      State::Positions|State::MoleculePos|State::MoleculeVel|State::Forces,true);
+      State::Positions|State::MoleculePos|State::MoleculeVel,true);
     posInNm = state.getMoleculePos();
     velInNm = state.getMoleculeVel();
     sitePositions = state.getPositions();
-    siteForces = state.getForces();
+//     siteForces = state.getForces();
     
     solver->ommTimer->stopClock();
     
@@ -141,7 +142,7 @@ int main(int argc, char *argv[])
     setOFVelocities(solver,velInNm);
     setOFSitePositions(solver,sitePositions);
     
-    num = setOFforce(solver,siteForces);
+//     num = setOFforce(solver,siteForces);
     
     solver->openFoamTimer->startClock();
  
