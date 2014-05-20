@@ -81,32 +81,38 @@ int main(int argc, char *argv[])
   
   num = extractOFPostoOMM(posInNm,solver,bBoxOF);
   nummols = extractOFVeltoOMM(velInNm,solver,num);
-  int t = extractOFQ(solver,moleculeQ);
-  t = extractOFSiteRefPositions(solver, siteRefPositions);
+//   int t = extractOFQ(solver,moleculeQ);
+//   t = extractOFSiteRefPositions(solver, siteRefPositions);
   
-  t = extractMoleculePositions(solver, molPositions);
-  t = extractMoleculePI(solver, moleculePI);
-  extractMomentOfInertia(solver, momentOfInertia, moleculeStatus);
+//   t = extractMoleculePositions(solver, molPositions);
+//   t = extractMoleculePI(solver, moleculePI);
+//   extractMomentOfInertia(solver, momentOfInertia, moleculeStatus);
 
   Info << "extracted " << num 
   << " particles and " << nummols
   << " from OF" << nl;
-      
+  OpenMM::State state;    
   solver->context->setPositions(posInNm);
   solver->context->setMoleculeVelocities(velInNm);
-  solver->context->setMoleculeQ(moleculeQ);
-  solver->context->setMoleculePositions(molPositions);
-  solver->context->setSiteRefPositions(siteRefPositions);
-  solver->context->setMoleculePI(moleculePI);
-  solver->context->setMomentOfInertia(momentOfInertia);
-  solver->context->setMoleculeStatus(moleculeStatus);
+  
+  siteForces.clear();
+  state = solver->context->getState(State::Forces,true);
+  siteForces = state.getForces();
+  num = setOFforce(solver,siteForces);  
+  
+  solver->molecules->updateAcceleration();
+//   solver->context->setMoleculeQ(moleculeQ);
+//   solver->context->setMoleculePositions(molPositions);
+//   solver->context->setSiteRefPositions(siteRefPositions);
+//   solver->context->setMoleculePI(moleculePI);
+//   solver->context->setMomentOfInertia(momentOfInertia);
+//   solver->context->setMoleculeStatus(moleculeStatus);
   
   solver->ommTimer = new clockTimer(runTime, "openMMTimer", true);
   solver->openFoamTimer = new clockTimer(runTime, "openFoamTimer", true);
   solver->openFoamTimer->startClock();
   #endif
 
-//   exit(0);
   Info << "\nStarting time loop\n" << endl;
   
   while (runTime.loop()){
@@ -116,41 +122,33 @@ int main(int argc, char *argv[])
     solver->evolveTimer->startClock();
     
     #ifdef USE_OMM
-    solver->molecules->fields().updateTimeInfo();
-//    solver->molecules->evolveBeforeForces();
-    
-    solver->openFoamTimer->stopClock();
+    solver->molecules->preliminaries();
     solver->ommTimer->startClock();
     solver->integrator->step(1);
-    
-    posInNm.clear();
     velInNm.clear();
-    OpenMM::State state;
-
-    state = solver->context->getState(
-      State::Positions|State::MoleculePos|State::MoleculeVel,true);
-
-    posInNm = state.getMoleculePos();
+    state = solver->context->getState(State::MoleculeVel,true);
     velInNm = state.getMoleculeVel();
-    sitePositions = state.getPositions();
-//     siteForces = state.getForces();
+    solver->ommTimer->stopClock();
+    setOFVelocities(solver,velInNm);
     
+    solver->molecules->move();
+    solver->molecules->buildCellOccupancy();
+    solver->molecules->controlBeforeForces();
+    solver->molecules->clearLagrangianFields();
+    solver->openFoamTimer->stopClock();
+    
+    num = extractOFPostoOMM(posInNm,solver,bBoxOF); 
+    solver->ommTimer->startClock();
+    solver->context->setPositions(posInNm);
+    state = solver->context->getState(State::Forces,true);
+    siteForces = state.getForces();
+    setOFforce(solver,siteForces);
     solver->ommTimer->stopClock();
     
-//     set the positions back to openFoam
-//     set the velocities back to openFOAM
-    setOFPositions(solver,posInNm);
-    setOFVelocities(solver,velInNm);
-    setOFSitePositions(solver,sitePositions);
-    
-//     num = setOFforce(solver,siteForces);
-    
     solver->openFoamTimer->startClock();
- 
-    solver->molecules->buildCellOccupancy();
-    solver->molecules->updateAcceleration();
-    solver->molecules->postPreliminaries();  
-  
+    solver->molecules->evolveAfterForces();
+    extractOFVeltoOMM(velInNm,solver,num);
+    solver->context->setMoleculeVelocities(velInNm);
     #endif
     solver->evolveTimer->stopClock();
     
