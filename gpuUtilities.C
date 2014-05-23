@@ -515,6 +515,26 @@ int extractMoleculePI(const struct poly_solver_t* solver, std::vector<OpenMM::Ve
 	
 }
 
+void setOFPI(poly_solver_t* solver, const std::vector< Vec3 >& moleculePI)
+{
+    IDLList<polyMolecule>::iterator mol(solver->molecules->begin());
+    double sqvel = solver->refVelocity*solver->refLength*solver->refMass;
+    const double converter = sqvel*1e6/DALTON;
+    int counter = 0;
+    for(mol=solver->molecules->begin();mol!=solver->molecules->end();++mol)
+    {
+        Info << "PI " << counter<< "=> " <<
+        moleculePI[counter][0] << " " <<
+        moleculePI[counter][1] << " " <<
+        moleculePI[counter][2] <<nl;
+        mol().pi() = Foam::vector(moleculePI[counter][0],
+	    moleculePI[counter][1],moleculePI[counter][2])/converter;
+	Info << "Vel " << mol().pi() << nl;
+	counter++;
+    }
+}
+
+
 void setOFPositions(poly_solver_t* solver, const std::vector< Vec3 >& posInNm)
 {
     IDLList<polyMolecule>::iterator mol(solver->molecules->begin());
@@ -557,11 +577,16 @@ void setOFVelocities(poly_solver_t* solver, const std::vector< Vec3 >& velInNm)
     
     for(mol = solver->molecules->begin();mol!=solver->molecules->end();++mol)                                                            
     {
+        Info << "V " << counter<< "=> " <<
+        velInNm[counter][0] << " " <<
+        velInNm[counter][1] << " " <<
+        velInNm[counter][2] <<nl;
         mol().v() = Foam::vector(
                                 velInNm[counter][0],                                                   
                                 velInNm[counter][1],                                                   
                                 velInNm[counter][2]                                                    
                                 )*divisor;                                                     
+	Info << "Vel " << mol().v() << nl;
         counter++;
     }
 }
