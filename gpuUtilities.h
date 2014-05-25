@@ -125,5 +125,8 @@ void extractMomentOfInertia(const struct poly_solver_t* solver, std::vector<Vec3
 	std::vector<std::vector<unsigned int> >& moleculeState
 );
 //                enum STATES st);
+
+//TODO temporary remove later
+static void setOFPI(struct poly_solver_t* solver, const std::vector<Vec3>& moleculePI);
 #endif	/* GPUUTILITIES_H */
 
