@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
   << " from OF" << nl;
   OpenMM::State state;    
   solver->context->setPositions(posInNm);
-  //solver->context->setMoleculeVelocities(velInNm);
+  solver->context->setMoleculeVelocities(velInNm);
   
   siteForces.clear();
   state = solver->context->getState(State::Forces,true);
@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
   solver->molecules->updateAcceleration();
 //  solver->context->setMoleculeQ(moleculeQ);
 //   solver->context->setMoleculePositions(molPositions);
-  solver->context->setSiteRefPositions(siteRefPositions);
+//   solver->context->setSiteRefPositions(siteRefPositions);
 //  solver->context->setMoleculePI(moleculePI);
 //   solver->context->setMomentOfInertia(momentOfInertia);
 //   solver->context->setMoleculeStatus(moleculeStatus);
@@ -124,19 +124,20 @@ int main(int argc, char *argv[])
     
     #ifdef USE_OMM
     solver->molecules->preliminaries();
+    /*
     extractOFQ(solver,moleculeQ);
     extractMoleculePI(solver, moleculePI);
     extractOFVeltoOMM(velInNm,solver,num);
     solver->context->setMoleculeVelocities(velInNm);
     solver->context->setMoleculeQ(moleculeQ);
-    solver->context->setMoleculePI(moleculePI);
+    solver->context->setMoleculePI(moleculePI);*/
     solver->integrator->step(1);
     velInNm.clear();
-    state = solver->context->getState(State::MoleculeVel|State::MoleculePI,true);
+    state = solver->context->getState(State::MoleculeVel,true);
     velInNm = state.getMoleculeVel();
-    std::vector<Vec3> mpi = state.getMoleculePI();
+//     std::vector<Vec3> mpi = state.getMoleculePI();
     setOFVelocities(solver,velInNm);
-    setOFPI(solver,mpi);
+//     setOFPI(solver,mpi);
     
     solver->molecules->move();
     extractOFQ(solver,moleculeQ);
@@ -144,7 +145,7 @@ int main(int argc, char *argv[])
     solver->context->setMoleculePI(moleculePI);
     solver->context->setMoleculeQ(moleculeQ);
     solver->molecules->buildCellOccupancy();
-    //solver->molecules->controlBeforeForces();
+    solver->molecules->controlBeforeForces();
     solver->molecules->clearLagrangianFields();
     solver->openFoamTimer->stopClock();
     
@@ -161,8 +162,8 @@ int main(int argc, char *argv[])
     */
     solver->openFoamTimer->startClock();
     solver->molecules->evolveAfterForces();
-    //extractOFVeltoOMM(velInNm,solver,num);
-    //solver->context->setMoleculeVelocities(velInNm);
+    extractOFVeltoOMM(velInNm,solver,num);
+    solver->context->setMoleculeVelocities(velInNm);
     #endif
     solver->evolveTimer->stopClock();
     
