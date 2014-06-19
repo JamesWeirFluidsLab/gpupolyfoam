@@ -17,16 +17,14 @@
 #include "fvCFD.H"
 #include "clockTimer.H"
 
-#ifdef USE_OMM
 #include "polyIdPairs.H"
 #include "OpenMM.h"
 using namespace OpenMM;
-#endif
 
-//#ifdef WATER
-//#include "mdWater.H"
-//#include "molecularField.H"
-#ifdef MONO
+#ifdef WATER
+#include "mdWater.H"
+#include "molecularField.H"
+#elif defined MONO
 #include "mdAtomistic.H"
 #else
 #include "mdPoly.H"
@@ -48,61 +46,57 @@ using namespace std;
 //- use typedef to declare clouds in common term 
 #ifdef MONO
 	typedef atomisticMoleculeCloud MOLECULE;
+	typedef atomisticMolecule TypeMolecule;
+#elif defined WATER
+	typedef molecularField MOLECULE;
+	typedef waterMolecule TypeMolecule;
 #else
 	typedef polyMoleculeCloud MOLECULE;
+	typedef polyMolecule TypeMolecule;
 #endif
 /**
  * structure to represent the classes into single block
  * so that it becomes easier to transfer
  */
 
-#ifdef USE_OMM
-    enum STATES {
-        Forces = 1,
-        Positions = 2,
-        Velocities = 3
-    };
-
-#endif
+enum STATES {
+    Forces = 1,
+    Positions = 2,
+    Velocities = 3
+};
 
 struct poly_solver_t
 {
-	reducedUnits* redUnits;
-	potential* pot;
-
+    reducedUnits* redUnits;
+    potential* pot;
 #ifdef MONO
-	atomisticMoleculeCloud* molecules; //if atomistic molecule
-#else
-	polyMoleculeCloud* molecules;//if polyatomic molecule
+    atomisticMoleculeCloud* molecules; //if atomistic molecule
+#elif defined WATER
+    molecularField* molecules;
+#else 
+    polyMoleculeCloud* molecules;//if polyatomic molecule
 #endif
-	clockTimer* evolveTimer;
+    clockTimer* evolveTimer;
 //declare OMM data structure
-#ifdef USE_OMM
-        clockTimer* ommTimer;
-        clockTimer* openFoamTimer;
-	System* system;
-	Context* context;
-	VelocityVerletIntegrator* integrator;
-	Vec3 bBoxOMMinNm;
-	double refTime, refMass, refLength, refForce, refCharge, refVelocity, deltaT,rCutInNM;
-        polyIdPairs* plid; //open foam polyIdPairs class for gpu solver
-        int uniqueMolecules;
-        bool isMolecular;
-#endif
-	poly_solver_t() : 
-	redUnits(0), pot(0), molecules(0),
-#ifdef USE_OMM
-	evolveTimer(0),system(0), context(0), integrator(0), isMolecular(false){}
-#else
-	evolveTimer(0) {}
-#endif
-	~poly_solver_t() {
-	delete redUnits; delete pot; 
-	delete molecules; delete evolveTimer;
-#ifdef USE_OMM
-	delete context; delete integrator; delete system;
-#endif
-	}
+
+    clockTimer* ommTimer;
+    clockTimer* openFoamTimer;
+    System* system;
+    Context* context;
+    VelocityVerletIntegrator* integrator;
+    Vec3 bBoxOMMinNm;
+    double refTime, refMass, refLength, refForce, refCharge, refVelocity, deltaT,rCutInNM;
+    polyIdPairs* plid; //open foam polyIdPairs class for gpu solver
+    int uniqueMolecules;
+    bool isMolecular;
+    poly_solver_t() : 
+    redUnits(0), pot(0), molecules(0),
+    evolveTimer(0),system(0), context(0), integrator(0), isMolecular(false){}
+    ~poly_solver_t() {
+        delete redUnits; delete pot; 
+        delete molecules; delete evolveTimer;
+        delete context; delete integrator; delete system;
+    }
 };
 
 /**
@@ -110,6 +104,5 @@ struct poly_solver_t
  * simulation
  */
 const Foam::word getScallingFunction(const MOLECULE& mol);
-
 
 #endif

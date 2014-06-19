@@ -199,49 +199,61 @@ void extractOFParticles(struct poly_solver_t* solver,
     int* midx=NULL;
 	 
     MOLECULE& mol = *solver->molecules;
-    IDLList<polyMolecule>::iterator m(mol.begin());
+    IDLList<TypeMolecule>::iterator m(mol.begin());
     for (m = mol.begin(); m != mol.end(); ++m)
     {
-            const polyMolecule::constantProperties& constprop = 
+	const TypeMolecule::constantProperties& constprop = 
                     mol.constProps(m().id());
-            int molsize = constprop.sites().size();
-            numMolecules++;
+#ifdef MONO
+    int molsize = 1;
+#else
+    int molsize = constprop.sites().size();
+#endif
+	numMolecules++;
 
-            //allocate memory for array holding molecule index based on molecule size
-            midx = (int*) malloc(sizeof(int)*molsize);
+	//allocate memory for array holding molecule index based on molecule size
+	midx = (int*) malloc(sizeof(int)*molsize);
 
-            //now traverse throught the N sites of each molecule size obtained
-            //from previous retrive
-            int itr = 0;
+	//now traverse throught the N sites of each molecule size obtained
+	//from previous retrive
+	int itr = 0;
+	
+	while(itr<molsize)
+	{
+#ifdef MONO
+            double tempmolmass = constprop.mass()*solver->refMass/DALTON;
+	    double tempmolcharge = constprop.site().siteCharge()*solver->refCharge/CHARGE;
+	    int sid = constprop.site().siteId();
+#else
+	    double tempmolmass = constprop.sites()[itr].siteMass()
+		    *solver->refMass/DALTON;
+	    double tempmolcharge = constprop.sites()[itr].siteCharge()
+		    *solver->refCharge/CHARGE;
+            int sid = constprop.sites()[itr].siteId();
+#endif
+	    midx[itr]  = solver->system->addParticle(tempmolmass);
 	    
-            while(itr<molsize)
-            {
-                double tempmolmass = constprop.sites()[itr].siteMass()
-                        *solver->refMass/DALTON;
-                double tempmolcharge = constprop.sites()[itr].siteCharge()
-                        *solver->refCharge/CHARGE;
-                midx[itr]  = solver->system->addParticle(tempmolmass);
-                int sid = constprop.sites()[itr].siteId();
-         
-                std::vector<double> params(species);
-                for(int k=0;k<species;k++)
-                    params[k]=0;
-                params[sid] = 1;
-                if(coefftype == "lennardJones")
-                        params[species-1] = tempmolcharge;
-                
-                nonbonded->addParticle(params);
-                itr++;
-                numParticles++;
-            }
+	    std::vector<double> params(species);
+	    for(int k=0;k<species;k++)
+		params[k]=0;
+	    params[sid] = 1;
+#ifndef MONO 
+	    if(coefftype == "lennardJones")
+		    params[species-1] = tempmolcharge;
+#endif
+	    
+	    nonbonded->addParticle(params);
+	    itr++;
+	    numParticles++;
+	}
 //             Info << " " << nl;
-            //add exclusion for each molecule obtained
-            if(molsize>1)
-			for(int i=0;i<molsize-1;i++)
-				for(int j=i+1;j<molsize;j++)
-					nonbonded->addExclusion(midx[i],midx[j]);
-            // clear the mol id list for further assignment
-            free(midx);
+	//add exclusion for each molecule obtained
+	if(molsize>1)
+		    for(int i=0;i<molsize-1;i++)
+			    for(int j=i+1;j<molsize;j++)
+				    nonbonded->addExclusion(midx[i],midx[j]);
+	// clear the mol id list for further assignment
+	free(midx);
 
     }//first for loop ends
     
@@ -257,8 +269,10 @@ void extractOFParticles(struct poly_solver_t* solver,
          * by obtaining the number from openfoam
          * 
          */
+#ifndef MONO
         solver->system->setNumberofIds(solver->uniqueMolecules);
 	solver->system->setIsMolecular(solver->isMolecular);
+#endif
     }
 }
 
@@ -317,15 +331,21 @@ int extractOFPostoOMM(std::vector<Vec3>& posInNm,struct poly_solver_t* sol,
     int numMols = 0;
     int numParticles = 0;
     
-    IDLList<polyMolecule>::iterator mol(sol->molecules->begin());
-	for (mol = sol->molecules->begin(); mol != sol->molecules->end(); ++mol)
+    IDLList<TypeMolecule>::iterator mol(sol->molecules->begin());
+    for (mol = sol->molecules->begin(); mol != sol->molecules->end(); ++mol)
     {
+#ifdef MONO
+        int molsize = 1;
+#else
         int molsize = mol().sitePositions().size();
+#endif
         int m = 0;
-
         while (m<molsize) {
-            Foam::vector rI = (mol().sitePositions()[m] - 
-bb.min())*sol->refLength*NM;
+#ifdef MONO
+	    Foam::vector rI = (mol().position() - bb.min()) * sol->refLength*NM;
+#else
+            Foam::vector rI = (mol().sitePositions()[m] - bb.min())*sol->refLength*NM;
+#endif
             posInNm.push_back(Vec3(rI.x(), rI.y(), rI.z()));
             m++;
             numParticles += 1;
@@ -341,9 +361,8 @@ int extractOFVeltoOMM(std::vector<Vec3>& velInNm, struct poly_solver_t* sol,int 
 {
 	int numMols = 0;
 	velInNm.clear();
-	const double nmconversion = sol->refVelocity*1e-12/NANO;
-    	
-	IDLList<polyMolecule>::iterator mol(sol->molecules->begin());
+	const double nmconversion = sol->refVelocity*1e-12/NANO;    	
+	IDLList<TypeMolecule>::iterator mol(sol->molecules->begin());
 	
 	for (mol = sol->molecules->begin(); mol != sol->molecules->end(); 
 ++mol){
@@ -351,37 +370,43 @@ int extractOFVeltoOMM(std::vector<Vec3>& velInNm, struct poly_solver_t* sol,int 
 		Foam::vector vi = mol().v()*nmconversion;
 		velInNm.push_back(Vec3(vi.x(),vi.y(),vi.z()));
 	}
-	
-	//make remaining particles to zero
-	/*
-	while(numMols<particles){
-	    velInNm.push_back(Vec3(0.0,0.0,0.0));
-	    numMols++;
-	}*/
+
 	return numMols;
 }
 
 int setOFforce(struct poly_solver_t* solver, const std::vector<Vec3>& ommForces)
 {
-	IDLList<polyMolecule>::iterator mol(solver->molecules->begin());
+	IDLList<TypeMolecule>::iterator mol(solver->molecules->begin());
 	int numparticle = 0;
 
     for (mol = solver->molecules->begin(); mol != solver->molecules->end(); 
 ++mol){
-        int molsize = mol().siteForces().size();
+#ifdef MONO
+        int molsize = 1;
+#else
+	int molsize = mol().siteForces().size();
+#endif
         int m = 0;
-		while(m<molsize){
-			mol().siteForces()[m] = Foam::vector                     
- 
-                        (
-                            ommForces[numparticle][0],
-                            ommForces[numparticle][1],
-                            ommForces[numparticle][2]
-                        )*NM2RUF/solver->refForce;
-			numparticle++;
-			m++;
-		}
+	while(m<molsize){
+#ifdef MONO
+	  mol().f() = Foam::vector(
+	      ommForces[numparticle][0],
+	      ommForces[numparticle][1],
+	      ommForces[numparticle][2]
+	  )*NM2RUF/solver->refForce;
+#else
+	  mol().siteForces()[m] = Foam::vector                     
+
+	  (
+	      ommForces[numparticle][0],
+	      ommForces[numparticle][1],
+	      ommForces[numparticle][2]
+	  )*NM2RUF/solver->refForce;
+#endif
+	  numparticle++;
+	  m++;
 	}
+     }
 	return numparticle;
 }
 
@@ -439,12 +464,13 @@ context->getState(OpenMM::State::Forces|State::Energy,true);
         
 }
 
+
 int extractOFQ(const struct poly_solver_t* solver, std::vector<OpenMM::Tensor>& moleculeQ)
 {
     int numMols = 0;
-    moleculeQ.clear();
-    
-    IDLList<polyMolecule>::iterator mol(solver->molecules->begin());
+#ifndef MONO
+    moleculeQ.clear();    
+    IDLList<TypeMolecule>::iterator mol(solver->molecules->begin());
     
     for (mol = solver->molecules->begin(); mol != solver->molecules->end(); ++mol)
     {
@@ -455,7 +481,7 @@ int extractOFQ(const struct poly_solver_t* solver, std::vector<OpenMM::Tensor>& 
 	      temp.yx(),temp.yy(),temp.yz(),
 	      temp.zx(),temp.zy(),temp.zz()));
     }
-    
+#endif
     return numMols;
 }
 
@@ -465,10 +491,10 @@ int extractOFSiteRefPositions(const struct poly_solver_t* solver, std::vector<Op
     int numMols = 0;
     siteRefPositions.clear();
     int uniquemolnumber = solver->uniqueMolecules;
-    
+#ifndef MONO    
     while(numMols<uniquemolnumber)
     {
-	const polyMolecule::constantProperties& constprop = solver->molecules->constProps(numMols);
+	const TypeMolecule::constantProperties& constprop = solver->molecules->constProps(numMols);
 	int molsize = constprop.sites().size();
 	int a = 0;
 	while(a<molsize){
@@ -478,7 +504,7 @@ int extractOFSiteRefPositions(const struct poly_solver_t* solver, std::vector<Op
 	}
 	numMols++;
     }
-    
+#endif
     return numMols;
 }
 
@@ -487,7 +513,7 @@ int extractMoleculePositions(const struct poly_solver_t* solver, std::vector<Ope
 	int numMols = 0;
 	moleculePositions.clear();
 
-	IDLList<polyMolecule>::iterator mol(solver->molecules->begin());
+	IDLList<TypeMolecule>::iterator mol(solver->molecules->begin());
 
 	for (mol = solver->molecules->begin(); mol!=solver->molecules->end(); ++mol)
 	{
@@ -503,24 +529,26 @@ int extractMoleculePI(const struct poly_solver_t* solver, std::vector<OpenMM::Ve
 {
 	double sqvel = solver->refVelocity*solver->refLength*solver->refMass;
 	const double converter = sqvel*1e6/DALTON;
+#ifndef MONO
 	moleculePI.clear();
 	int numMols = 0;
-	IDLList<polyMolecule>::iterator mol(solver->molecules->begin());
+	IDLList<TypeMolecule>::iterator mol(solver->molecules->begin());
 	for (mol = solver->molecules->begin(); mol!=solver->molecules->end(); ++mol)
 	{
 		const Foam::vector& pi = mol().pi()*converter;
 		moleculePI.push_back(OpenMM::Vec3(pi.x(),pi.y(),pi.z()));
 		numMols++;
 	}
-	
+#endif
 }
 
 void setOFPI(poly_solver_t* solver, const std::vector< Vec3 >& moleculePI)
 {
-    IDLList<polyMolecule>::iterator mol(solver->molecules->begin());
+    IDLList<TypeMolecule>::iterator mol(solver->molecules->begin());
     double sqvel = solver->refVelocity*solver->refLength*solver->refMass;
     const double converter = sqvel*1e6/DALTON;
     int counter = 0;
+#ifndef MONO
     for(mol=solver->molecules->begin();mol!=solver->molecules->end();++mol)
     {
         Info << "PI " << counter<< "=> " <<
@@ -532,12 +560,13 @@ void setOFPI(poly_solver_t* solver, const std::vector< Vec3 >& moleculePI)
 	Info << "Vel " << mol().pi() << nl;
 	counter++;
     }
+#endif
 }
 
 
 void setOFPositions(poly_solver_t* solver, const std::vector< Vec3 >& posInNm)
 {
-    IDLList<polyMolecule>::iterator mol(solver->molecules->begin());
+    IDLList<TypeMolecule>::iterator mol(solver->molecules->begin());
     int counter = 0;
     double divisor = NANO/solver->refLength;
 
@@ -571,7 +600,7 @@ void setOFPositions(poly_solver_t* solver, const std::vector< Vec3 >& posInNm)
 
 void setOFVelocities(poly_solver_t* solver, const std::vector< Vec3 >& velInNm)
 {
-    IDLList<polyMolecule>::iterator mol(solver->molecules->begin());                                                       
+    IDLList<TypeMolecule>::iterator mol(solver->molecules->begin());                                                       
     int counter = 0;
     double divisor = NANO/(solver->refVelocity*E12);
     
@@ -588,14 +617,15 @@ void setOFVelocities(poly_solver_t* solver, const std::vector< Vec3 >& velInNm)
 
 void setOFSitePositions(poly_solver_t* solver, const std::vector< Vec3 >& sitePositions)
 {
+#ifndef MONO
     MOLECULE& mol = *solver->molecules;
-    IDLList<polyMolecule>::iterator m(mol.begin());
+    IDLList<TypeMolecule>::iterator m(mol.begin());
     double converter = NANO/solver->refLength;
     
     int atomCounter = 0;
     for (m = mol.begin(); m != mol.end(); ++m)
     {
-	const polyMolecule::constantProperties& constprop = 
+	const TypeMolecule::constantProperties& constprop = 
 		mol.constProps(0);
 	int molsize = constprop.sites().size();
 	int counter = 0;
@@ -627,14 +657,14 @@ void setOFSitePositions(poly_solver_t* solver, const std::vector< Vec3 >& sitePo
             }
         }    
     }//for loop
-
+#endif
 }
 
 void extractMomentOfInertia(poly_solver_t* solver, std::vector< Vec3 >& momentOfInertia,
       std::vector<std::vector<unsigned int> >& moleculeState
 )
 {
-    
+#ifndef MONO
     int n = 0;
     const double moIconversion = (solver->refLength * solver->refLength * solver->refMass * E18)/DALTON;
     
@@ -658,7 +688,7 @@ void extractMomentOfInertia(poly_solver_t* solver, std::vector< Vec3 >& momentOf
     moleculeState.resize(uniquemol);
     
     while(n<uniquemol){
-      const polyMolecule::constantProperties& constprop = solver->molecules->constProps(n);
+      const TypeMolecule::constantProperties& constprop = solver->molecules->constProps(n);
       const diagTensor& m = constprop.momentOfInertia();
       momentOfInertia[n] = OpenMM::Vec3(m.xx()*moIconversion,m.yy()*moIconversion,m.zz()*moIconversion);
       unsigned int pm = (unsigned int) constprop.pointMolecule();
@@ -673,6 +703,7 @@ void extractMomentOfInertia(poly_solver_t* solver, std::vector< Vec3 >& momentOf
       
       n++;
     }
+#endif
 }
 
 

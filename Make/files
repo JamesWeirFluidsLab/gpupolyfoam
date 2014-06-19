@@ -1,3 +1,17 @@
 gpuPolyFoam.C
 
-EXE = $(FOAM_APPBIN)/gpuPolyFoam
+#ifdef USE_OMM
+ ifeq ($(USE_OMM),Water)
+  c++FLAGS+=-DUSE_OMM
+  c++FLAGS+=-DWATER
+ else ifeq ($(USE_OMM),Mono)
+  c++FLAGS+=-DUSE_OMM
+  c++FLAGS+=-DMONO
+ endif
+#else
+  USE_OMM = Poly
+  c++FLAGS+=-DUSE_OMM
+  c++FLAGS+=-DPOLY
+#endif
+
+EXE = $(FOAM_APPBIN)/gpu$(USE_OMM)Foam

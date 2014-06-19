@@ -1,16 +1,3 @@
-ifdef USE_OMM
- ifeq ($(USE_OMM),POLY)
-  c++FLAGS+=-DUSE_OMM
-  c++FLAGS+=-DPOLY
- else ifeq ($(USE_OMM),MONO)
-  c++FLAGS+=-DUSE_OMM
-  c++FLAGS+=-DMONO
- endif
-else
- c++FLAGS+=-DUSE_CPU
- c++FLAGS+=-DPOLY
-endif
-
 
 EXE_INC = \
      -I$(LIB_SRC)/finiteVolume/lnInclude \
@@ -36,4 +23,4 @@ EXE_LIBS = \
     -lwaterField \
     -lmolecularField \
     -L$(FOAM_OMM)/lib \
-    -lOpenMM 
+    -lOpenMM

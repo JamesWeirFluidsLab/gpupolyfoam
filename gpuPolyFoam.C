@@ -32,10 +32,7 @@
 
 #include "gpuPolyFoam.h"
 #include "gpuUtilities.h"
-#ifdef USE_OMM
-#include "gpuUtilities.h"
 #include "gpuUtilities.C"
-#endif
 
 int main(int argc, char *argv[])
 {
@@ -57,27 +54,29 @@ int main(int argc, char *argv[])
   
   
   //obtain reference properties
-  #ifdef USE_OMM
   int num = 0;
   int nummols = 0;
-  
   solver->plid = new polyIdPairs(mesh, *solver->pot);
+#ifndef MONO
   std::vector<int> molecularInfo;
   extractMolecularInfo(solver,molecularInfo);
-  
+#endif
   double dt = mesh.time().deltaT().value();
   const boundBox bBoxOF = mesh.bounds();
   setOMMBox(solver,bBoxOF,dt);
   initialiseOMM(solver);
   
-  std::vector<OpenMM::Vec3> posInNm,velInNm,
-    molPositions, moleculePI, sitePositions, momentOfInertia,siteForces;
-
+  std::vector<OpenMM::Vec3> posInNm,siteForces,velInNm;
+#ifndef MONO
+  std::vector<OpenMM::Vec3> molPositions, moleculePI;
+  std::vector<OpenMM::Vec3> sitePositions, momentOfInertia;
   std::vector<OpenMM::Tensor> moleculeQ;
   std::vector<std::vector<unsigned int> > moleculeStatus;
   std::vector<OpenMM::Vec3> siteRefPositions;
+#endif
   
   num = extractOFPostoOMM(posInNm,solver,bBoxOF);
+#ifndef MONO
   nummols = extractOFVeltoOMM(velInNm,solver,num);
   int t = 0;
   extractOFQ(solver,moleculeQ);
@@ -85,12 +84,10 @@ int main(int argc, char *argv[])
   t = extractMoleculePositions(solver, molPositions);
   t = extractMoleculePI(solver, moleculePI);
   extractMomentOfInertia(solver, momentOfInertia, moleculeStatus);
-
-  Info << "extracted " << num 
-  << " particles and " << nummols
-  << " from OF" << nl;
+#endif
   OpenMM::State state;    
   solver->context->setPositions(posInNm);
+#ifndef MONO
   solver->context->setMoleculeVelocities(velInNm);
   solver->context->setMoleculeQ(moleculeQ);
   solver->context->setMoleculePositions(molPositions);
@@ -98,12 +95,25 @@ int main(int argc, char *argv[])
   solver->context->setMoleculePI(moleculePI);
   solver->context->setMomentOfInertia(momentOfInertia);
   solver->context->setMoleculeStatus(moleculeStatus);
-
+#endif
   
+/**
+ * now calculate forces on GPU for solver who only perform
+ * force calculation on GPU
+ * for the moment the some users prefer atomistic and water
+ * foam for only force calculation
+ */
+#ifdef MONO
+    state = solver->context->getState(State::Forces,true);
+    siteForces.clear();
+    siteForces = state.getForces();
+    setOFforce(solver,siteForces);
+    solver->molecules->updateAcceleration();
+#endif
+    
   solver->ommTimer = new clockTimer(runTime, "openMMTimer", true);
   solver->openFoamTimer = new clockTimer(runTime, "openFoamTimer", true);
   solver->openFoamTimer->startClock();
-  #endif
 
   Info << "\nStarting time loop\n" << endl;
   
@@ -112,8 +122,20 @@ int main(int argc, char *argv[])
     Info << "Time = " << runTime.timeName() << endl;
     
     solver->evolveTimer->startClock();
-    
-    #ifdef USE_OMM
+#ifdef MONO
+    solver->molecules->evolveBeforeForces();
+    num = extractOFPostoOMM(posInNm,solver,bBoxOF);
+    solver->openFoamTimer->stopClock();
+    solver->ommTimer->startClock();
+    solver->context->setPositions(posInNm);
+    state = solver->context->getState(State::Forces,true);
+    siteForces.clear();
+    siteForces = state.getForces();
+    solver->ommTimer->stopClock();
+    solver->openFoamTimer->startClock();
+    setOFforce(solver,siteForces);
+    solver->molecules->evolveAfterForces();
+#else
     solver->molecules->preliminaries();
     solver->openFoamTimer->stopClock();
     solver->ommTimer->startClock();
@@ -132,8 +154,7 @@ int main(int argc, char *argv[])
     solver->ommTimer->startClock();
     solver->openFoamTimer->startClock();
     solver->molecules->postPreliminaries();
-
-    #endif
+#endif
     solver->evolveTimer->stopClock();
     
     runTime.write();
