@@ -25,4 +25,4 @@ EXE_LIBS = \
     -lwaterField \
     -lmolecularField \
     -L$(FOAM_OMM)/lib \
-    -lOpenMM_d
+    -lOpenMM
