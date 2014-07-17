@@ -1,6 +1,18 @@
-c++FLAGS+=-DUSE_OMM
-c++FLAGS+=-DMono
-EXE = $(FOAM_APPBIN)/gpuMonoFoam
+//the file expects a variable USE_OMM passed along side wmake with either values
+// mono|poly|water
+// the solver will compile class relevant to type of solver specified
+// as in atomistic - mono
+// waterfield - water
+// polyfield - poly
+
+ifdef USE_OMM
+ case = $(shell echo $(USE_OMM) | tr A-Z a-z )
+ ucase = $(shell echo $(USE_OMM) | tr a-z A-Z )
+ c++FLAGS+=-DUSE_OMM
+ c++FLAGS+=-D$(ucase)
+endif
+
+EXE = $(FOAM_APPBIN)/gpuFoam
 EXE_INC = \
      -I$(LIB_SRC)/finiteVolume/lnInclude \
     -I$(LIB_SRC)/meshTools/lnInclude \
