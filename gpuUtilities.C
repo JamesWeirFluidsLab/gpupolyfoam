@@ -126,7 +126,7 @@ void initialiseOMM(struct poly_solver_t* solver)
 
 
 void extractCoeffParameters(const MOLECULE& mol,
-			const polyIdPairs& p,
+			const Pairs& p,
 			std::vector<std::string>& coeffStr)
 {
 

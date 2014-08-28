@@ -28,7 +28,7 @@ void initialiseOMM(struct poly_solver_t* solver);
  * which could be used as argument to custom non bonded force function
  */
 void extractCoeffParameters(const MOLECULE& mol,
-				const polyIdPairs& plid,
+				const Pairs& plid,
 				std::vector<std::string>& coeffStr);
 
 /**
