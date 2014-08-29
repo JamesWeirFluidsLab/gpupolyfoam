@@ -56,8 +56,9 @@ int main(int argc, char *argv[])
   //obtain reference properties
   int num = 0;
   int nummols = 0;
-  solver->plid = new polyIdPairs(mesh, *solver->pot);
+  solver->plid = new Pairs(mesh, *solver->pot);
 #ifndef MONO
+  //only for water and poly 
   std::vector<int> molecularInfo;
   extractMolecularInfo(solver,molecularInfo);
 #endif

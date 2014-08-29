@@ -49,10 +49,14 @@ void initialiseOMM(struct poly_solver_t* solver)
         std::string formulastr;
         
         if(coefftype == "lennardJones"){
+#ifdef POLY
             formulastr = 
             
 "4*epsilon*((sigma/r)^12-(sigma/r)^6)+(138.9354561469*q)*(1/r-1/rCut+(r-rCut)/rCut^2); " 
             + tempstr.str() + " q=q1*q2";
+#elif defined MONO
+	    formulastr = "4*epsilon*((sigma/r)^12-(sigma/r)^6); " + tempstr.str();
+#endif
         }
         else if(coefftype == "morse"){
             formulastr = "D*(exp(-2*alpha*(r-r0))-2*exp(-alpha*(r-r0)));"
@@ -74,7 +78,7 @@ void initialiseOMM(struct poly_solver_t* solver)
         // Coulomb potential with shifted force correction:
         // ================================================
         nonbonded = new CustomNonbondedForce(formulastr);
-        nonbonded->addGlobalParameter("rCut",solver->rCutInNM);
+//         nonbonded->addGlobalParameter("rCut",solver->rCutInNM);
     }
     else{
         Info << "Error: (Solver) Cannot find electrostatic potential" <<
@@ -188,7 +192,11 @@ void extractOFParticles(struct poly_solver_t* solver,
     int temp = 0;
     
     if(coefftype == "lennardJones")
+#ifdef POLY
         temp = solver->plid->nIds() + 1;
+#elif MONO
+	temp = solver->plid->nIds();
+#endif
     else
         temp = solver->plid->nIds();
     
@@ -237,7 +245,7 @@ void extractOFParticles(struct poly_solver_t* solver,
 	    for(int k=0;k<species;k++)
 		params[k]=0;
 	    params[sid] = 1;
-#ifndef MONO 
+#ifdef POLY 
 	    if(coefftype == "lennardJones")
 		    params[species-1] = tempmolcharge;
 #endif
@@ -442,13 +450,18 @@ void addParticlesToNonBonded(CustomNonbondedForce* const nonbonded,
     const List<word>& idlist = solver->molecules->pot().siteIdList();
     const std::string coefftype = solver->plid->coeffType();
     
+    int ctrl = 0;
     for(int i = 0; i < solver->plid->nIds(); ++i){
         const word& idAstr = idlist[i];
         nonbonded->addPerParticleParameter(idAstr);
+	ctrl++;
     }
+    Info << "Number of Perparticles " << ctrl << nl;
+#ifdef POLY
+    Info << "Q added as well"<<nl;
     if(coefftype == "lennardJones")
-        nonbonded->addPerParticleParameter("q");
-    
+        nonbonded->addPerParticleParameter("q");    
+#endif
     //set nonbondedmethod
     nonbonded->setNonbondedMethod(CustomNonbondedForce::CutoffPeriodic);
     nonbonded->setCutoffDistance(solver->rCutInNM);

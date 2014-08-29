@@ -1,4 +1,3 @@
-
 EXE_INC = \
      -I$(LIB_SRC)/finiteVolume/lnInclude \
     -I$(LIB_SRC)/meshTools/lnInclude \
@@ -24,3 +23,18 @@ EXE_LIBS = \
     -lmolecularField \
     -L$(FOAM_OMM)/lib \
     -lOpenMM
+    
+ifdef OMM
+ case = $(shell echo $(OMM) | tr A-Z a-z )
+ ucase = $(shell echo $(OMM) | tr a-z A-Z )
+ ifeq ($(case),water)
+  c++FLAGS+=-DUSE_OMM
+  c++FLAGS+=-DWATER
+ else ifeq ($(case),mono)
+  c++FLAGS+=-DUSE_OMM
+  c++FLAGS+=-DMONO
+ endif
+else
+  c++FLAGS+=-DUSE_OMM
+  c++FLAGS+=-DPOLY
+endif
