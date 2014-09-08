@@ -31,12 +31,19 @@ void initialiseOMM(struct poly_solver_t* solver)
  */ 
         
 	extractCoeffParameters(tempmol,*solver->plid,coeffStr);
+#ifdef POLY
         std::string coefftype = solver->plid->coeffType();
         Info << "CoeffType " << coefftype << nl;
         
         const label cs = solver->plid->coeffSize();
         const List<word>& coeffnames = solver->plid->coeffNames();
-        
+	
+#elif defined MONO
+	std::vector<std::string> coeffnames(2);
+	coeffnames[0] = "epsilon";
+	coeffnames[1] = "sigma";
+	const label cs = 2;
+#endif
         std::stringstream tempstr;
 	/*
          * gather the N coeff parameters and their repective coeff string
@@ -48,7 +55,6 @@ void initialiseOMM(struct poly_solver_t* solver)
         
         std::string formulastr;
         
-        if(coefftype == "lennardJones"){
 #ifdef POLY
             formulastr = 
             
@@ -57,16 +63,7 @@ void initialiseOMM(struct poly_solver_t* solver)
 #elif defined MONO
 	    formulastr = "4*epsilon*((sigma/r)^12-(sigma/r)^6); " + tempstr.str();
 #endif
-        }
-        else if(coefftype == "morse"){
-            formulastr = "D*(exp(-2*alpha*(r-r0))-2*exp(-alpha*(r-r0)));"
-                    + tempstr.str();
-        }
-        else{
-            Info << "no coeff type found, quitting ..." << nl;
-            exit(-1);
-        }
-        
+                
         Info << "====Equation====" << nl;
         Info << formulastr << nl;
 
@@ -194,8 +191,8 @@ ABstr+"*("+idAStr+"1*"+idBStr+"2)";
 	  {
 	      const word& idAStr = idList[i];
 	      const word& idBStr = idList[j];
-	      scalar epsAB = s.epsilon()[i][j]*6.02214129e23/1000;
-	      scalar sigmaAB= s.sigma()[i][j]/1e-9;
+	      scalar epsAB = p.epsilon()[i][j]*6.02214129e23/1000;
+	      scalar sigmaAB= p.sigma()[i][j]/1e-9;
 
 	      std::string epsABStr;
 	      std::stringstream outEpsAB;
@@ -233,7 +230,7 @@ ABstr+"*("+idAStr+"1*"+idBStr+"2)";
 void extractOFParticles(struct poly_solver_t* solver,
                         CustomNonbondedForce* const nonbonded)
 {
-    const std::string coefftype = solver->plid->coeffType();
+    const std::string coefftype = "lennardJones";
     int temp = 0;
     
     if(coefftype == "lennardJones")
@@ -493,7 +490,9 @@ void addParticlesToNonBonded(CustomNonbondedForce* const nonbonded,
                                 const struct poly_solver_t* solver)
 {
     const List<word>& idlist = solver->molecules->pot().siteIdList();
+#ifdef POLY
     const std::string coefftype = solver->plid->coeffType();
+#endif
     
     int ctrl = 0;
     for(int i = 0; i < solver->plid->nIds(); ++i){
