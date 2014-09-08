@@ -48,14 +48,16 @@ using namespace std;
 #ifdef MONO
 	typedef atomisticMoleculeCloud MOLECULE;
 	typedef atomisticMolecule TypeMolecule;
+	typedef selectIdPairs Pairs;
 #elif defined WATER
 	typedef molecularField MOLECULE;
 	typedef waterMolecule TypeMolecule;
+	typedef polyIdPairs Pairs;
 #else
 	typedef polyMoleculeCloud MOLECULE;
 	typedef polyMolecule TypeMolecule;
-#endif
 	typedef polyIdPairs Pairs;
+#endif
 /**
  * structure to represent the classes into single block
  * so that it becomes easier to transfer

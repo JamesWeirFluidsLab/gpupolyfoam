@@ -133,10 +133,11 @@ void extractCoeffParameters(const MOLECULE& mol,
 			const Pairs& p,
 			std::vector<std::string>& coeffStr)
 {
-
 	const List<word>& idList = mol.pot().siteIdList();
+#ifdef POLY	
 	const List<word>& coefflist = p.coeffNames();
 	label coeffsize = coefflist.size();
+	Info << "Coeffsize " << coeffsize;
 	std::vector<std::string> coeffstr(coeffsize);
 
 	int counter = 0;
@@ -180,9 +181,53 @@ ABstr+"*("+idAStr+"1*"+idBStr+"2)";
 			}
 		}
 	}
-
 	for(counter = 0; counter < coeffsize; ++counter)
 		coeffStr.push_back(coeffstr[counter]);
+#elif defined MONO
+      label counter = 0;
+      std::string epsString = "";
+      std::string sigmaString = "";
+      
+      forAll(p.sigma(),i)
+      {
+	  forAll(p.sigma()[i],j)
+	  {
+	      const word& idAStr = idList[i];
+	      const word& idBStr = idList[j];
+	      scalar epsAB = s.epsilon()[i][j]*6.02214129e23/1000;
+	      scalar sigmaAB= s.sigma()[i][j]/1e-9;
+
+	      std::string epsABStr;
+	      std::stringstream outEpsAB;
+	      outEpsAB << epsAB;
+	      epsABStr = outEpsAB.str();
+
+	      std::string sigmaABStr;
+	      std::stringstream outSigmaAB;
+	      outSigmaAB << sigmaAB;
+	      sigmaABStr = outSigmaAB.str();
+
+	      std::string epsStr2 = epsABStr+"*("+idAStr+"1*"+idBStr+"2)";
+	      std::string sigmaStr2 = sigmaABStr+"*("+idAStr+"1*"+idBStr+"2)";
+
+	      if(counter == 0)
+	      {
+		  epsString = epsString+""+epsStr2;
+		  sigmaString = sigmaString+""+sigmaStr2;
+	      }
+	      else
+	      {
+		  epsString = epsString+" + "+epsStr2;
+		  sigmaString = sigmaString+" + "+sigmaStr2;
+	      }
+	      counter++;
+	  }
+      }
+      //now copy all the concatenated strings into global array
+      coeffStr.push_back(epsString);
+      coeffStr.push_back(sigmaString);
+#endif
+     
 }
 
 void extractOFParticles(struct poly_solver_t* solver,
