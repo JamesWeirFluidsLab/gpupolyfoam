@@ -56,32 +56,26 @@ int main(int argc, char *argv[])
 
       
     //obtain reference properties
-#ifdef USE_OMM
     int num = 0;
-    solver->plid = new polyIdPairs(mesh, *solver->pot);
+    solver->plid = new Pairs(mesh, *solver->pot);
     double dt = mesh.time().deltaT().value();
     const boundBox bBoxOF = mesh.bounds();
     setOMMBox(solver,bBoxOF,dt);
     initialiseOMM(solver);
+    
     std::vector<Vec3> posInNm;
     num = extractOFPostoOMM(posInNm,solver,bBoxOF);
-    Info << "extracted " << num 
-        << " particles from OF" << nl;
-	solver->context->setPositions(posInNm);
+    
+    solver->context->setPositions(posInNm);
     std::vector<Vec3> atomForces;
     getOMMState(solver->context,atomForces);
     num = setOFforce(solver,atomForces);
-    Info << "set " << num 
-        << " forces to OF" << nl;
-        
     
     solver->molecules->updateAcceleration();
     
     solver->ommTimer = new clockTimer(runTime, "openMMTimer", true);
     solver->openFoamTimer = new clockTimer(runTime, "openFoamTimer", true);
     solver->openFoamTimer->startClock();
-#endif
-
     
     Info << "\nStarting time loop\n" << endl;
 	
@@ -91,7 +85,6 @@ int main(int argc, char *argv[])
         
         solver->evolveTimer->startClock();
           
-#ifdef USE_OMM
         solver->molecules->evolveBeforeForces();
           
         solver->openFoamTimer->stopClock();
@@ -104,15 +97,11 @@ int main(int argc, char *argv[])
         getOMMState(solver->context,atomForces);
         solver->ommTimer->stopClock();
           
-        num = setOFforce(solver,atomForces);
-          
         solver->openFoamTimer->startClock();
+        num = setOFforce(solver,atomForces);
           
         solver->molecules->evolveAfterForces();
           
-#else
-        solver->molecules->evolve();
-#endif
         solver->evolveTimer->stopClock();
         
         runTime.write();
