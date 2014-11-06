@@ -49,8 +49,7 @@ void initialiseOMM(struct poly_solver_t* solver)
         
         if(coefftype == "lennardJones"){
             formulastr = 
-            "4*epsilon*((sigma/r)^12-(sigma/r)^6)+(138.9354561469*q)*(1/r-1/rCut+(r-rCut)/rCut^2); " 
-            + tempstr.str() + " q=q1*q2";
+            "4*epsilon*((sigma/r)^12-(sigma/r)^6); " + tempstr.str();
         }
         else if(coefftype == "morse"){
             formulastr = "D*(exp(-2*alpha*(r-r0))-2*exp(-alpha*(r-r0)));"
@@ -63,7 +62,7 @@ void initialiseOMM(struct poly_solver_t* solver)
         
         Info << "====Equation====" << nl;
         Info << formulastr << nl;
-
+	
 // Initialise customNonbonded force for OpenMM	
     CustomNonbondedForce* nonbonded;
     
@@ -177,9 +176,11 @@ void extractOFParticles(struct poly_solver_t* solver,
     const std::string coefftype = solver->plid->coeffType();
     int temp = 0;
     
+    /*
+    // this is for charge particle in lennardJones equation string
     if(coefftype == "lennardJones")
         temp = solver->plid->nIds() + 1;
-    else
+    else*/
         temp = solver->plid->nIds();
     
     const int species = temp;
@@ -214,8 +215,13 @@ void extractOFParticles(struct poly_solver_t* solver,
                 for(int k=0;k<species;k++)
                     params[k]=0;
                 params[sid] = 1;
-                if(coefftype == "lennardJones")
-                        params[species-1] = tempmolcharge;
+		/**
+		 * because there is not q parameter so assigning charge value
+		 * does not makes sense
+		 */
+		
+//                 if(coefftype == "lennardJones")
+//                         params[species-1] = tempmolcharge;
                 
                 nonbonded->addParticle(params);
                 
@@ -314,9 +320,10 @@ void addParticlesToNonBonded(CustomNonbondedForce* const nonbonded,
         const word& idAstr = idlist[i];
         nonbonded->addPerParticleParameter(idAstr);
     }
+    /*
     if(coefftype == "lennardJones")
         nonbonded->addPerParticleParameter("q");
-    
+    */
     //set nonbondedmethod
     nonbonded->setNonbondedMethod(CustomNonbondedForce::CutoffPeriodic);
     nonbonded->setCutoffDistance(solver->rCutInNM);
