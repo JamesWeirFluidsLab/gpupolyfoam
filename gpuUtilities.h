@@ -37,7 +37,9 @@ void extractCoeffParameters(const MOLECULE& mol,
  * and correspondingly add to the OMM system
  */
 void extractOFParticles(struct poly_solver_t* solver, 
-                        CustomNonbondedForce* const nonbonded);
+                        CustomNonbondedForce* const nonbonded,
+			NonbondedForce* const nbonded
+ 		      );
 /**
  * extract OF positions and generate and OMM equivalent 
  * array to be passed to OMM system

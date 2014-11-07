@@ -65,6 +65,7 @@ void initialiseOMM(struct poly_solver_t* solver)
 	
 // Initialise customNonbonded force for OpenMM	
     CustomNonbondedForce* nonbonded;
+    NonbondedForce* nbonded;
     
     if(scallingfunction == "shiftedForce"){
         // ================================================
@@ -72,6 +73,10 @@ void initialiseOMM(struct poly_solver_t* solver)
         // ================================================
         nonbonded = new CustomNonbondedForce(formulastr);
         nonbonded->addGlobalParameter("rCut",solver->rCutInNM);
+	nbonded = new NonbondedForce();
+	nbonded->setNonbondedMethod(NonbondedForce::Ewald);
+	nbonded->setCutoffDistance(solver->rCutInNM);
+	nbonded->setEwaldErrorTolerance(EWALD_ERR);
     }
     else{
         Info << "Error: (Solver) Cannot find electrostatic potential" <<
@@ -93,7 +98,7 @@ void initialiseOMM(struct poly_solver_t* solver)
  * system inside openmm, this information includes
  * masses, exclusion list, custom parameters, etc
  */
-    extractOFParticles(solver,nonbonded);
+    extractOFParticles(solver,nonbonded,nbonded);
     
     Info << "CUSTOMNONBONDEDFORCE INFO"<<nl;
     Info << "Num particles "<< nonbonded->getNumParticles() << nl;
@@ -171,7 +176,9 @@ void extractCoeffParameters(const MOLECULE& mol,
 }
 
 void extractOFParticles(struct poly_solver_t* solver,
-                        CustomNonbondedForce* const nonbonded)
+                        CustomNonbondedForce* const nonbonded,
+			NonbondedForce* const nbonded
+ 		      )
 {
     const std::string coefftype = solver->plid->coeffType();
     int temp = 0;
@@ -186,6 +193,7 @@ void extractOFParticles(struct poly_solver_t* solver,
     const int species = temp;
     
     int* midx=NULL;
+    int counter = 0;
 	 
     MOLECULE& mol = *solver->molecules;
     IDLList<polyMolecule>::iterator m(mol.begin());
@@ -198,6 +206,8 @@ void extractOFParticles(struct poly_solver_t* solver,
 
             //allocate memory for array holding molecule index based on molecule size
             midx = (int*) malloc(sizeof(int)*molsize);
+	    // charge product
+	    double chargeProd = 0.0;
 
             //now traverse throught the N sites of each molecule size obtained
             //from previous retrive
@@ -222,16 +232,24 @@ void extractOFParticles(struct poly_solver_t* solver,
 		
 //                 if(coefftype == "lennardJones")
 //                         params[species-1] = tempmolcharge;
-                
+                chargeProd *= tempmolcharge;
                 nonbonded->addParticle(params);
+		nbonded->addParticle(tempmolcharge, 0.0, 0.0);
+		nbonded->setParticleParameters(counter,138.9354561469,0.0,0.0);
                 
                 itr++;
+		counter++;//global counter for atom indices
             }
             //add exclusion for each molecule obtained
             if(molsize>1)
-			for(int i=0;i<molsize-1;i++)
-				for(int j=i+1;j<molsize;j++)
-					nonbonded->addExclusion(midx[i],midx[j]);
+	        for(int i=0;i<molsize-1;i++){
+		    int idx = midx[i];
+		    for(int j=i+1;j<molsize;j++){
+		        int jdx = midx[j];
+			nonbonded->addExclusion(idx,jdx);
+			nbonded->addException(idx,jdx,chargeProd,0.0,0.0);
+			}
+		}
         	    // clear the mol id list for further assignment
             free(midx);
 
