@@ -59,7 +59,7 @@ void setOMMBox(struct poly_solver_t* solver,const boundBox& bBoxOF,const double 
  * add particle to custom non bonded force
  * by retriving from potential dict list
  */
-void addParticlesToNonBonded(CustomNonbondedForce* const nonbonded,
+void addParticlesToNonBonded(CustomNonbondedForce* const cnonBonded,
                                 const struct poly_solver_t* solver);
 
 /**

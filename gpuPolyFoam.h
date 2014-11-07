@@ -48,7 +48,9 @@ using namespace std;
 #ifdef MONO
 	typedef atomisticMoleculeCloud MOLECULE;
 #else
-	typedef polyMoleculeCloud MOLECULE;
+    typedef polyMoleculeCloud MOLECULE;
+    typedef polyMolecule typeMolecule;
+    typedef polyIdPairs Pairs;
 #endif
 /**
  * structure to represent the classes into single block
@@ -56,12 +58,11 @@ using namespace std;
  */
 
 #ifdef USE_OMM
-    enum STATES {
-        Forces = 1,
-        Positions = 2,
-        Velocities = 3
-    };
-
+enum STATES {
+    Forces = 1,
+    Positions = 2,
+    Velocities = 3
+};
 #endif
 
 struct poly_solver_t
@@ -84,7 +85,8 @@ struct poly_solver_t
 	Integrator* integrator;
 	Vec3 bBoxOMMinNm;
 	double refTime, refMass, refLength, refForce, refCharge, deltaT,rCutInNM;
-        polyIdPairs* plid; //open foam
+    Pairs* plid; //open foam
+    
 #endif
 	poly_solver_t() : 
 	redUnits(0), pot(0), molecules(0),
