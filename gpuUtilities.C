@@ -85,8 +85,8 @@ void initialiseOMM(struct poly_solver_t* solver)
         exit(-1);
     }
     
-    //add per particles to cnonBonded force
-    addParticlesToNonBonded(cnonBonded,solver);
+    //add per particles to cnonbonded force
+    addParticlesToNonBonded(nonbonded,solver);
 //set OMM box size
     solver->system->setDefaultPeriodicBoxVectors(
         Vec3(solver->bBoxOMMinNm[0],0,0),
@@ -102,17 +102,17 @@ void initialiseOMM(struct poly_solver_t* solver)
     extractOFParticles(solver,nonbonded,nbonded);
     
     Info << "CUSTOMNONBONDEDFORCE INFO"<<nl;
-    Info << "Num particles "<< cnonBonded->getNumParticles() << nl;
-    Info << "Num exclusion "<< cnonBonded->getNumExclusions() << nl;
-    Info << "Num perparticle params "<< cnonBonded->getNumPerParticleParameters() << nl;
-    Info << "Num global params "<< cnonBonded->getNumGlobalParameters() << nl;
-    Info << "Nonbonded method "<< cnonBonded->getNonbondedMethod() << nl;
-    Info << "Cutoff distance "<< cnonBonded->getCutoffDistance() << nl;
+    Info << "Num particles "<< nonbonded->getNumParticles() << nl;
+    Info << "Num exclusion "<< nonbonded->getNumExclusions() << nl;
+    Info << "Num perparticle params "<< nonbonded->getNumPerParticleParameters() << nl;
+    Info << "Num global params "<< nonbonded->getNumGlobalParameters() << nl;
+    Info << "Nonbonded method "<< nonbonded->getNonbondedMethod() << nl;
+    Info << "Cutoff distance "<< nonbonded->getCutoffDistance() << nl;
     Info << "==============================="<<nl;    
 
-    solver->system->addForce(cnonBonded);
-    //add another force to system
     solver->system->addForce(nonbonded);
+    //add another force to system
+    solver->system->addForce(nbonded);
     Platform& platform = Platform::getPlatformByName("OpenCL");
     solver->integrator =  new VerletIntegrator(solver->deltaT*OpenMM::PsPerFs);
     solver->context = new Context(*solver->system,*solver->integrator,platform);
@@ -223,8 +223,8 @@ void extractOFParticles(struct poly_solver_t* solver,
                 double tempmolmass = constprop.sites()[itr].siteMass()
                         *solver->refMass/DALTON;
                 //no more charge required
-//                double tempmolcharge = constprop.sites()[itr].siteCharge()
-//                        *solver->refCharge/CHARGE;
+               double tempmolcharge = constprop.sites()[itr].siteCharge()
+                       *solver->refCharge/CHARGE;
                 midx[itr]  = solver->system->addParticle(tempmolmass);
                 int sid = constprop.sites()[itr].siteId();
          
@@ -335,7 +335,7 @@ void setOMMBox(struct poly_solver_t* solver, const boundBox& bBoxOF,const double
 }
 
 
-void addParticlesToNonBonded(CustomNonbondedForce* const cnonBonded,
+void addParticlesToNonBonded(CustomNonbondedForce* const nonbonded,
                                 const struct poly_solver_t* solver)
 {
     const List<word>& idlist = solver->molecules->pot().siteIdList();
@@ -343,15 +343,15 @@ void addParticlesToNonBonded(CustomNonbondedForce* const cnonBonded,
     
     for(int i = 0; i < solver->plid->nIds(); ++i){
         const word& idAstr = idlist[i];
-        cnonBonded->addPerParticleParameter(idAstr);
+        nonbonded->addPerParticleParameter(idAstr);
     }
     /*
     if(coefftype == "lennardJones")
         nonbonded->addPerParticleParameter("q");
     */
     //set nonbondedmethod
-    cnonBonded->setNonbondedMethod(CustomNonbondedForce::CutoffPeriodic);
-    cnonBonded->setCutoffDistance(solver->rCutInNM);
+    nonbonded->setNonbondedMethod(CustomNonbondedForce::CutoffPeriodic);
+    nonbonded->setCutoffDistance(solver->rCutInNM);
 }
 
 void getOMMState(const Context* context,std::vector<Vec3>& statearray)
