@@ -241,8 +241,8 @@ void extractOFParticles(struct poly_solver_t* solver,
 //                         params[species-1] = tempmolcharge;
                 chargeProd *= tempmolcharge;
                 nonbonded->addParticle(params);
-		nbonded->addParticle(tempmolcharge, 0.0, 0.0);
-		nbonded->setParticleParameters(counter,138.9354561469,0.0,0.0);
+		nbonded->addParticle(tempmolcharge*138.9354561469, 0.0, 0.0);
+		nbonded->setParticleParameters(counter,tempmolcharge*138.9354561469,0.0,0.0);
                 
                 itr++;
 		counter++;//global counter for atom indices
@@ -254,13 +254,14 @@ void extractOFParticles(struct poly_solver_t* solver,
 		    for(int j=i+1;j<molsize;j++){
 		        int jdx = midx[j];
 			nonbonded->addExclusion(idx,jdx);
-			nbonded->addException(idx,jdx,chargeProd,0.0,0.0);
+// 			nbonded->addException(idx,jdx,chargeProd,0.0,0.0);
 			}
 		}
         	    // clear the mol id list for further assignment
             free(midx);
 
     }//first for loop ends
+    printf("Total particles in system: %d\n", counter);
 }
 
 
