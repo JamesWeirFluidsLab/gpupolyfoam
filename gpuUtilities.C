@@ -319,10 +319,6 @@ int setOFforce(struct poly_solver_t* solver, const std::vector<Vec3>& ommForces)
                             ommForces[numparticle][1],
                             ommForces[numparticle][2]
                         )*NM2RUF/solver->refForce;
-			Info << numparticle << " => " <<
-			     mol().siteForces()[m][0] << " " <<
-			     mol().siteForces()[m][1] << " " <<
-			     mol().siteForces()[m][2] << endl;
 			numparticle++;
 			m++;
 		}
