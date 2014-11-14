@@ -199,6 +199,7 @@ void extractOFParticles(struct poly_solver_t* solver,
     const int species = temp;
     
     int* midx=NULL;
+    double* chargeProd = NULL;
     int counter = 0;
 	 
     MOLECULE& mol = *solver->molecules;
@@ -213,7 +214,7 @@ void extractOFParticles(struct poly_solver_t* solver,
             //allocate memory for array holding molecule index based on molecule size
             midx = (int*) malloc(sizeof(int)*molsize);
 	    // charge product
-	    double chargeProd = 0.0;
+	    chargeProd = (double*) malloc(sizeof(double)*molsize);
 
             //now traverse throught the N sites of each molecule size obtained
             //from previous retrive
@@ -223,9 +224,10 @@ void extractOFParticles(struct poly_solver_t* solver,
                 double tempmolmass = constprop.sites()[itr].siteMass()
                         *solver->refMass/DALTON;
                 //no more charge required
-               double tempmolcharge = constprop.sites()[itr].siteCharge()
+		double tempmolcharge = constprop.sites()[itr].siteCharge()
                        *solver->refCharge/CHARGE;
                 midx[itr]  = solver->system->addParticle(tempmolmass);
+		chargeProd[itr] = tempmolcharge*138.9354561469;
                 int sid = constprop.sites()[itr].siteId();
          
                 std::vector<double> params(species);
@@ -239,11 +241,17 @@ void extractOFParticles(struct poly_solver_t* solver,
 		
 //                 if(coefftype == "lennardJones")
 //                         params[species-1] = tempmolcharge;
-                chargeProd *= tempmolcharge;
                 nonbonded->addParticle(params);
-		nbonded->addParticle(tempmolcharge*138.9354561469, 0.0, 0.0);
-		nbonded->setParticleParameters(counter,tempmolcharge*138.9354561469,0.0,0.0);
-                
+// 		nbonded->addParticle(tempmolcharge*138.9354561469, 1.0, 0.0);
+// 		nbonded->setParticleParameters(counter,tempmolcharge*138.9354561469,1.0,0.0);
+		/**
+		 * considering constantinos suggestions on 14/11/2014
+		 * removed 138.*** multiplier from molecular charge,
+		 * this was increasing the size of charge
+		 * refer: dielectric constant (epsilon_0)
+		 */
+                nbonded->addParticle(tempmolcharge, 1.0, 0.0);
+		nbonded->setParticleParameters(counter,tempmolcharge,1.0,0.0);
                 itr++;
 		counter++;//global counter for atom indices
             }
@@ -254,7 +262,12 @@ void extractOFParticles(struct poly_solver_t* solver,
 		    for(int j=i+1;j<molsize;j++){
 		        int jdx = midx[j];
 			nonbonded->addExclusion(idx,jdx);
-// 			nbonded->addException(idx,jdx,chargeProd,0.0,0.0);
+			/**
+			 * chages made zero to disable internal coulumb and lennardJones
+			 * interactions
+			 */
+			nbonded->addException(idx,jdx,0.0,1.0,0.0);
+			
 			}
 		}
         	    // clear the mol id list for further assignment
@@ -306,6 +319,10 @@ int setOFforce(struct poly_solver_t* solver, const std::vector<Vec3>& ommForces)
                             ommForces[numparticle][1],
                             ommForces[numparticle][2]
                         )*NM2RUF/solver->refForce;
+			Info << numparticle << " => " <<
+			     mol().siteForces()[m][0] << " " <<
+			     mol().siteForces()[m][1] << " " <<
+			     mol().siteForces()[m][2] << endl;
 			numparticle++;
 			m++;
 		}
