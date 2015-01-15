@@ -110,12 +110,24 @@ void initialiseOMM(struct poly_solver_t* solver)
     Info << "Cutoff distance "<< nonbonded->getCutoffDistance() << nl;
     Info << "==============================="<<nl;    
 
+    /** for calculating virial
+     * openmm is required to be explicitly notified
+     * by invoking measurement tools class and passing 
+     * appropriate names of measurements to be performed
+     */
+    std::vector<std::string> mtools(1);
+    mtools[0] = "MeasureBinVirial";
+    OpenMM::Vec3 startPoint = OpenMM::Vec3(2.72,0,2.72);
+    OpenMM::Vec3 endPoint = OpenMM::Vec3(2.72,5.44,2.72);
+    MeasurementTools& measurements = *new MeasurementTools(mtools,startPoint,endPoint,
+							   solver->system->getNumParticles(),1,1);
+
     solver->system->addForce(nonbonded);
     //add another force to system
     solver->system->addForce(nbonded);
     Platform& platform = Platform::getPlatformByName("OpenCL");
     solver->integrator =  new VerletIntegrator(solver->deltaT*OpenMM::PsPerFs);
-    solver->context = new Context(*solver->system,*solver->integrator,platform);
+    solver->context = new Context(*solver->system,*solver->integrator,platform,measurements);
     
     Info << "Initialised sytem on OMM with " <<
         solver->system->getNumParticles() <<
@@ -324,6 +336,25 @@ int setOFforce(struct poly_solver_t* solver, const std::vector<Vec3>& ommForces)
 		}
 	}
 	return numparticle;
+}
+
+void setOFVirial(poly_solver_t* solver, OpenMM::Tensor* virial)
+{
+    Info << "setting openfoam virial"<<endl;
+    int counter = 0;
+    IDLList<polyMolecule>::iterator mol(solver->molecules->begin());
+    
+    for (mol = solver->molecules->begin(); mol != solver->molecules->end(); ++mol)
+    {
+	mol().rf() = Foam::tensor(virial[counter][0],virial[counter][1],
+				    virial[counter][2],virial[counter][3],
+				    virial[counter][4],virial[counter][5],
+				    virial[counter][6],virial[counter][7],
+				    virial[counter][8])*1.6605e-21/(solver->refForce*solver->refLength);
+	counter++;
+    }
+    
+    Info << "finished setting openfoam virial"<<endl;
 }
 
 //set OMM box

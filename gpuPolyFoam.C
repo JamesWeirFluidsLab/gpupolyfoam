@@ -69,7 +69,11 @@ int main(int argc, char *argv[])
     solver->context->setPositions(posInNm);
     std::vector<Vec3> atomForces;
     getOMMState(solver->context,atomForces);
+    ContextImpl& impl = solver->context->getImpl();
+    solver->context->getMeasurements().measureAtEnd(impl);
+    OpenMM::Tensor* virial = solver->context->getMeasurements().getVirial();
     num = setOFforce(solver,atomForces);
+    setOFVirial(solver,virial);
     
     solver->molecules->updateAcceleration();
     
@@ -95,10 +99,13 @@ int main(int argc, char *argv[])
           
         solver->context->setPositions(posInNm);
         getOMMState(solver->context,atomForces);
+	solver->context->getMeasurements().measureAtEnd(impl);
+	OpenMM::Tensor* virial = solver->context->getMeasurements().getVirial();
         solver->ommTimer->stopClock();
           
         solver->openFoamTimer->startClock();
         num = setOFforce(solver,atomForces);
+	setOFVirial(solver,virial);
           
         solver->molecules->evolveAfterForces();
           

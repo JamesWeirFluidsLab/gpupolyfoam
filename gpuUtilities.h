@@ -70,6 +70,10 @@ void addParticlesToNonBonded(CustomNonbondedForce* const cnonBonded,
 int setOFforce(struct poly_solver_t* solver, const std::vector<Vec3>& ommForces);
 
 /**
+ * set obtained and calculated virial from omm to OpenFOAM
+ */
+void setOFVirial(struct poly_solver_t* solver, OpenMM::Tensor* virial);
+/**
  * getOMMState
  * get information from openmm
  */
